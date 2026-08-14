@@ -1,0 +1,33 @@
+import cors from 'cors';
+import express, { type Express } from 'express';
+import { pinoHttp } from 'pino-http';
+import { env } from '../../infrastructure/config/env.js';
+import { logger } from '../../infrastructure/logging/logger.js';
+import type { ExchangeRateController } from './controllers/ExchangeRateController.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { exchangeRateRoutes } from './routes/exchangeRate.routes.js';
+import { healthRoutes } from './routes/health.routes.js';
+
+/**
+ * Monta a aplicação Express. Recebe os controllers já construídos (ver
+ * `composition-root.ts`) em vez de instanciá-los aqui — mantém esta camada
+ * responsável apenas por fiação HTTP (middlewares, rotas, tratamento de erro).
+ */
+export function createApp(deps: { exchangeRateController: ExchangeRateController }): Express {
+  const app = express();
+
+  app.use(cors({ origin: env.CORS_ORIGIN }));
+  app.use(express.json());
+  app.use(pinoHttp({ logger, autoLogging: env.NODE_ENV !== 'test' }));
+
+  app.use('/health', healthRoutes());
+  app.use('/api/exchange-rates', exchangeRateRoutes(deps.exchangeRateController));
+
+  app.use((_req, res) => {
+    res.status(404).json({ message: 'Recurso não encontrado.' });
+  });
+
+  app.use(errorHandler);
+
+  return app;
+}

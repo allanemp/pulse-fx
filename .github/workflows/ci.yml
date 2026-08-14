@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pulsefx
+          POSTGRES_PASSWORD: pulsefx
+          POSTGRES_DB: pulsefx
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pulsefx -d pulsefx"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://pulsefx:pulsefx@localhost:5432/pulsefx?schema=public
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (shared -> api -> web)
+        run: npm run build
+
+      - name: Aplicar migrações
+        run: npm run prisma:migrate:deploy --workspace apps/api
+
+      - name: Testes
+        run: npm test

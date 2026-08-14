@@ -1,0 +1,50 @@
+name: pulse-fx
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pulsefx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulsefx}
+      POSTGRES_DB: ${POSTGRES_DB:-pulsefx}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pulsefx_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-pulsefx} -d ${POSTGRES_DB:-pulsefx}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pulsefx}:${POSTGRES_PASSWORD:-pulsefx}@postgres:5432/${POSTGRES_DB:-pulsefx}?schema=public
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - '${API_PORT:-3333}:3333'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3333}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${WEB_PORT:-5173}:80'
+
+volumes:
+  pulsefx_postgres_data:

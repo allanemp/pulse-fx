@@ -1,0 +1,104 @@
+:root {
+  color-scheme: light dark;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.dashboard {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.dashboard header h1 {
+  margin-bottom: 0.25rem;
+  font-size: 2rem;
+}
+
+.dashboard header p {
+  margin-top: 0;
+  color: #94a3b8;
+}
+
+.panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background-color: #1e293b;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.exchange-rate-form {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.field label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.field input {
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.exchange-rate-form button {
+  grid-column: 1 / -1;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background-color: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exchange-rate-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.exchange-rate-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exchange-rate-table th,
+.exchange-rate-table td {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #334155;
+}
+
+.empty-state {
+  color: #94a3b8;
+}
+
+.error {
+  color: #f87171;
+}

@@ -1,0 +1,25 @@
+// Schema do Prisma — camada de infraestrutura.
+// O restante do código nunca importa os tipos gerados aqui diretamente:
+// eles são mapeados para as entidades de domínio em
+// `src/infrastructure/database/repositories`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ExchangeRate {
+  id             String   @id @default(uuid())
+  baseCurrency   String   @map("base_currency") @db.VarChar(3)
+  quoteCurrency  String   @map("quote_currency") @db.VarChar(3)
+  rate           Decimal  @db.Decimal(18, 8)
+  capturedAt     DateTime @map("captured_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([baseCurrency, quoteCurrency, capturedAt])
+  @@map("exchange_rates")
+}
