@@ -1,9 +1,11 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
 import { pinoHttp } from 'pino-http';
+import swaggerUi from 'swagger-ui-express';
 import { env } from '../../infrastructure/config/env.js';
 import { logger } from '../../infrastructure/logging/logger.js';
 import type { ExchangeRateController } from './controllers/ExchangeRateController.js';
+import { openApiSpec } from './docs/openapiSpec.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { exchangeRateRoutes } from './routes/exchangeRate.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
@@ -22,6 +24,15 @@ export function createApp(deps: { exchangeRateController: ExchangeRateController
 
   app.use('/health', healthRoutes());
   app.use('/api/exchange-rates', exchangeRateRoutes(deps.exchangeRateController));
+
+  app.get('/docs/openapi.json', (_req, res) => {
+    res.status(200).json(openApiSpec);
+  });
+  app.use(
+    '/docs',
+    swaggerUi.serve,
+    swaggerUi.setup(openApiSpec, { customSiteTitle: 'Pulse FX API — Docs' }),
+  );
 
   app.use((_req, res) => {
     res.status(404).json({ message: 'Recurso não encontrado.' });

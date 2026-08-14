@@ -83,6 +83,18 @@ Exemplo de corpo do `POST`:
 }
 ```
 
+### Documentação interativa (Swagger)
+
+Com a API rodando, o contrato HTTP completo (rotas, schemas, exemplos) está
+disponível em:
+
+- **Swagger UI**: http://localhost:3333/docs
+- **OpenAPI JSON** (para importar no Postman/Insomnia): http://localhost:3333/docs/openapi.json
+
+O documento fica em `apps/api/src/presentation/http/docs/openapiSpec.ts` — é
+código, não gerado a partir de comentários espalhados pelos controllers,
+então revisar o contrato é revisar esse arquivo.
+
 ## Como rodar
 
 ### Opção 1 — Docker Compose (recomendado)
