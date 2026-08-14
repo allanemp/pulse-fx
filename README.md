@@ -8,7 +8,7 @@ arquitetura em camadas, PostgreSQL e execução via Docker Compose.
 
 | Camada          | Tecnologia                                                     |
 | --------------- | -------------------------------------------------------------- |
-| Frontend        | React 18 + TypeScript + Vite                                   |
+| Frontend        | React 18 + TypeScript + Vite + TanStack Query                  |
 | Backend         | Node.js + TypeScript + Express, arquitetura em camadas (SOLID) |
 | Persistência    | PostgreSQL 16 + Prisma ORM                                     |
 | Containerização | Docker + Docker Compose                                        |
@@ -29,7 +29,9 @@ pulse-fx/
 │   │       └── composition-root.ts  # Injeção de dependências (fiação de tudo)
 │   └── web/                  # Frontend React + TypeScript (Vite)
 │       └── src/
-│           ├── api/              # Cliente HTTP e acesso à API
+│           ├── api/              # Cliente HTTP, acesso à API e query keys
+│           ├── app/              # Configuração do QueryClient (TanStack Query)
+│           ├── hooks/            # Hooks de dados (useQuery/useMutation por caso de uso)
 │           ├── components/       # Componentes de UI
 │           └── pages/            # Páginas
 ├── packages/
@@ -60,6 +62,20 @@ princípios SOLID:
   implementações concretas e as injeta nos casos de uso — trocar Prisma por
   outra tecnologia de persistência afeta apenas esse arquivo e a pasta
   `infrastructure/`.
+
+No frontend, a comunicação com a API passa por **hooks + TanStack Query**
+em vez de `useState`/`useEffect` manuais:
+
+- **`api/exchangeRatesApi.ts`** contém só as funções de acesso HTTP puras.
+- **`hooks/useExchangeRates.ts`** e **`hooks/useCreateExchangeRate.ts`** envolvem
+  essas funções em `useQuery`/`useMutation`, cada um responsável por um único
+  caso de uso da tela.
+- O cache de leitura é compartilhado automaticamente entre componentes (sem
+  refetch redundante) e a listagem se atualiza sozinha após um `POST` bem-sucedido
+  via `queryClient.invalidateQueries`, sem gerenciar `loading`/`error` à mão.
+- `app/queryClient.ts` centraliza a configuração do cache (`staleTime`, retries).
+  Em desenvolvimento, o React Query Devtools fica disponível na tela (removido
+  do bundle de produção por tree-shaking).
 
 ## Domínio de exemplo
 

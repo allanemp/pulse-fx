@@ -1,36 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { CreateExchangeRateInput, ExchangeRateDTO } from '@pulse-fx/shared';
-import { exchangeRatesApi } from '../api/exchangeRatesApi';
 import { ExchangeRateForm } from '../components/ExchangeRateForm';
 import { ExchangeRateTable } from '../components/ExchangeRateTable';
+import { useCreateExchangeRate } from '../hooks/useCreateExchangeRate';
+import { useExchangeRates } from '../hooks/useExchangeRates';
 
 export function DashboardPage() {
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRateDTO[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const loadExchangeRates = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-
-    try {
-      const data = await exchangeRatesApi.list();
-      setExchangeRates(data);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Erro ao carregar cotações.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadExchangeRates();
-  }, [loadExchangeRates]);
-
-  async function handleCreate(input: CreateExchangeRateInput) {
-    await exchangeRatesApi.create(input);
-    await loadExchangeRates();
-  }
+  const { data: exchangeRates = [], isLoading, isError, error } = useExchangeRates();
+  const createExchangeRate = useCreateExchangeRate();
 
   return (
     <main className="dashboard">
@@ -41,14 +16,22 @@ export function DashboardPage() {
 
       <section className="panel">
         <h2>Registrar cotação</h2>
-        <ExchangeRateForm onSubmit={handleCreate} />
+        <ExchangeRateForm
+          onSubmit={async (input) => {
+            await createExchangeRate.mutateAsync(input);
+          }}
+        />
       </section>
 
       <section className="panel">
         <h2>Cotações registradas</h2>
         {isLoading && <p>Carregando…</p>}
-        {loadError && <p className="error">{loadError}</p>}
-        {!isLoading && !loadError && <ExchangeRateTable exchangeRates={exchangeRates} />}
+        {isError && (
+          <p className="error">
+            {error instanceof Error ? error.message : 'Erro ao carregar cotações.'}
+          </p>
+        )}
+        {!isLoading && !isError && <ExchangeRateTable exchangeRates={exchangeRates} />}
       </section>
     </main>
   );
