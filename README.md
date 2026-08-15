@@ -99,13 +99,32 @@ Exemplo de corpo do `POST`:
 }
 ```
 
-### Indicadores (modelo de dados)
+### Indicadores
 
-O schema do Prisma também já tem `indicators` (catálogo de indicadores, ex.:
-SELIC, IPCA) e `observations` (série temporal: um valor por indicador por
-data, com `@@unique([indicatorId, date])` e FK `ON DELETE CASCADE` para
-`indicators`). Por enquanto é só persistência — ainda não há casos de uso,
-controllers nem rotas para esse domínio (veja `apps/api/prisma/schema.prisma`).
+Um segundo domínio, em camadas completas (domain → application →
+infrastructure → presentation), como o de cotações: `indicators` é o
+catálogo (ex.: SELIC, IPCA) e `observations` é a série temporal de valores
+de cada indicador, um por data (`@@unique([indicatorId, date])` no Prisma).
+
+| Método | Rota                                                   | Descrição                                         |
+| ------ | ------------------------------------------------------ | ------------------------------------------------- |
+| POST   | `/api/indicators`                                      | Cadastra um novo indicador                        |
+| GET    | `/api/indicators`                                      | Lista os indicadores cadastrados                  |
+| POST   | `/api/indicators/{indicatorId}/observations`           | Registra uma observação (data + valor)            |
+| GET    | `/api/indicators/{indicatorId}/observations?from=&to=` | Lista a série temporal (filtro opcional por data) |
+
+Exemplo de corpo do `POST /api/indicators/{indicatorId}/observations`:
+
+```json
+{
+  "date": "2026-08-14",
+  "value": 10.75
+}
+```
+
+Ao contrário de `ExchangeRate.rate`, `Observation.value` aceita números
+negativos — indicadores econômicos legitimamente assumem valores negativos
+(ex.: variação do PIB).
 
 ### Documentação interativa (Swagger)
 

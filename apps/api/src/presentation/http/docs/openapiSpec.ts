@@ -81,6 +81,52 @@ const currencyQueryParam = (name: string, required: boolean) => ({
   example: name === 'baseCurrency' ? 'USD' : 'BRL',
 });
 
+const indicatorSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    name: { type: 'string', example: 'SELIC' },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'name', 'createdAt'],
+};
+
+const createIndicatorInputSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 120, example: 'SELIC' },
+  },
+  required: ['name'],
+};
+
+const observationSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    indicatorId: { type: 'string', format: 'uuid' },
+    date: { type: 'string', format: 'date', example: '2026-08-14' },
+    value: { type: 'number', format: 'double', example: 10.75 },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: ['id', 'indicatorId', 'date', 'value', 'createdAt'],
+};
+
+const createObservationInputSchema = {
+  type: 'object',
+  properties: {
+    date: { type: 'string', format: 'date', example: '2026-08-14' },
+    value: { type: 'number', format: 'double', example: 10.75 },
+  },
+  required: ['date', 'value'],
+};
+
+const indicatorIdPathParam = {
+  name: 'indicatorId',
+  in: 'path',
+  required: true,
+  schema: { type: 'string', format: 'uuid' },
+};
+
 export const openApiSpec = {
   openapi: '3.0.3',
   info: {
@@ -94,6 +140,10 @@ export const openApiSpec = {
   servers: [{ url: '/', description: 'Servidor atual' }],
   tags: [
     { name: 'Exchange Rates', description: 'Cotações de câmbio' },
+    {
+      name: 'Indicators',
+      description: 'Catálogo de indicadores e suas observações (série temporal)',
+    },
     { name: 'Health', description: 'Verificação de disponibilidade do serviço' },
   ],
   paths: {
@@ -181,11 +231,98 @@ export const openApiSpec = {
         },
       },
     },
+    '/api/indicators': {
+      get: {
+        tags: ['Indicators'],
+        summary: 'Lista os indicadores cadastrados',
+        responses: {
+          '200': {
+            description: 'Lista de indicadores.',
+            content: {
+              'application/json': {
+                schema: { type: 'array', items: { $ref: '#/components/schemas/Indicator' } },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ['Indicators'],
+        summary: 'Cadastra um novo indicador',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CreateIndicatorInput' } },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Indicador cadastrado com sucesso.',
+            content: { 'application/json': { schema: { $ref: '#/components/schemas/Indicator' } } },
+          },
+          '400': badRequestResponse,
+          '422': domainErrorResponse,
+        },
+      },
+    },
+    '/api/indicators/{indicatorId}/observations': {
+      get: {
+        tags: ['Indicators'],
+        summary: 'Lista a série temporal de observações de um indicador',
+        parameters: [
+          indicatorIdPathParam,
+          {
+            name: 'from',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', format: 'date' },
+          },
+          { name: 'to', in: 'query', required: false, schema: { type: 'string', format: 'date' } },
+        ],
+        responses: {
+          '200': {
+            description: 'Lista de observações, ordenadas por data crescente.',
+            content: {
+              'application/json': {
+                schema: { type: 'array', items: { $ref: '#/components/schemas/Observation' } },
+              },
+            },
+          },
+          '400': badRequestResponse,
+          '422': notFoundResponse,
+        },
+      },
+      post: {
+        tags: ['Indicators'],
+        summary: 'Registra uma observação (valor em uma data) para o indicador',
+        parameters: [indicatorIdPathParam],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/CreateObservationInput' } },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Observação registrada com sucesso.',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/Observation' } },
+            },
+          },
+          '400': badRequestResponse,
+          '422': domainErrorResponse,
+        },
+      },
+    },
   },
   components: {
     schemas: {
       ExchangeRate: exchangeRateSchema,
       CreateExchangeRateInput: createExchangeRateInputSchema,
+      Indicator: indicatorSchema,
+      CreateIndicatorInput: createIndicatorInputSchema,
+      Observation: observationSchema,
+      CreateObservationInput: createObservationInputSchema,
       ApiErrorResponse: apiErrorResponseSchema,
     },
   },

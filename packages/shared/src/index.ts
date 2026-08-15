@@ -24,3 +24,26 @@ export interface ApiErrorResponse {
   message: string;
   details?: Record<string, string[]>;
 }
+
+export interface IndicatorDTO {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface CreateIndicatorInput {
+  name: string;
+}
+
+export interface ObservationDTO {
+  id: string;
+  indicatorId: string;
+  date: string;
+  value: number;
+  createdAt: string;
+}
+
+export interface CreateObservationInput {
+  date: string;
+  value: number;
+}
