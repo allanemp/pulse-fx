@@ -1,6 +1,9 @@
 import type { IndicatorDTO } from '@pulse-fx/shared';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useObservations } from '../hooks/useObservations';
+import type { HistoryPeriod } from '../utils/indicatorStats';
+import { filterByPeriod } from '../utils/indicatorStats';
+import { IndicatorHistoryChart } from './IndicatorHistoryChart';
 import { ObservationsTable } from './ObservationsTable';
 
 interface IndicatorDetailModalProps {
@@ -8,13 +11,20 @@ interface IndicatorDetailModalProps {
   onClose: () => void;
 }
 
+const PERIOD_OPTIONS: { value: HistoryPeriod; label: string }[] = [
+  { value: '30d', label: '30 dias' },
+  { value: '12m', label: '12 meses' },
+];
+
 /**
- * Visão aprofundada de um indicador: descrição/fonte/ressalvas e a tabela
- * histórica completa. Reaproveita a mesma query de `useObservations` já
- * usada pelo card (mesma query key) — abrir o modal não refaz o fetch.
+ * Visão aprofundada de um indicador: descrição/fonte/ressalvas, gráfico de
+ * evolução (com mín./máx. do período) e a tabela histórica completa
+ * paginada. Reaproveita a mesma query de `useObservations` já usada pelo
+ * card (mesma query key) — abrir o modal não refaz o fetch.
  */
 export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModalProps) {
   const { data: observations, isLoading, isError } = useObservations(indicator.id);
+  const [period, setPeriod] = useState<HistoryPeriod>('12m');
 
   useEffect(() => {
     function handleKeyDown(event: globalThis.KeyboardEvent) {
@@ -26,6 +36,11 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
+
+  const chartObservations = useMemo(
+    () => (observations ? filterByPeriod(observations, period) : []),
+    [observations, period],
+  );
 
   return (
     <div
@@ -65,7 +80,44 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
         <div className="overflow-y-auto p-5">
           {isLoading && <p className="text-sm text-slate-400">Carregando histórico…</p>}
           {isError && <p className="text-sm text-red-400">Erro ao carregar o histórico.</p>}
-          {observations && <ObservationsTable observations={observations} />}
+
+          {observations && (
+            <>
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-100">Evolução histórica</h3>
+                  <div
+                    role="group"
+                    aria-label="Período do gráfico"
+                    className="flex rounded-md border border-slate-700 p-0.5 text-xs"
+                  >
+                    {PERIOD_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPeriod(option.value)}
+                        aria-pressed={period === option.value}
+                        className={`rounded px-2 py-1 transition ${
+                          period === option.value
+                            ? 'bg-blue-500/20 text-blue-300'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <IndicatorHistoryChart observations={chartObservations} unit={indicator.unit} />
+              </section>
+
+              <section className="mt-6">
+                <h3 className="mb-3 text-sm font-semibold text-slate-100">Histórico completo</h3>
+                <ObservationsTable observations={observations} />
+              </section>
+            </>
+          )}
         </div>
       </div>
     </div>
