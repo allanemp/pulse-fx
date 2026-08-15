@@ -13,13 +13,38 @@ datasource db {
 }
 
 model ExchangeRate {
-  id             String   @id @default(uuid())
-  baseCurrency   String   @map("base_currency") @db.VarChar(3)
-  quoteCurrency  String   @map("quote_currency") @db.VarChar(3)
-  rate           Decimal  @db.Decimal(18, 8)
-  capturedAt     DateTime @map("captured_at")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  baseCurrency  String   @map("base_currency") @db.VarChar(3)
+  quoteCurrency String   @map("quote_currency") @db.VarChar(3)
+  rate          Decimal  @db.Decimal(18, 8)
+  capturedAt    DateTime @map("captured_at")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   @@index([baseCurrency, quoteCurrency, capturedAt])
   @@map("exchange_rates")
+}
+
+/// Catálogo de indicadores (ex.: SELIC, IPCA, CDI) — cada um com sua série de observações.
+model Indicator {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  observations Observation[]
+
+  @@map("indicators")
+}
+
+/// Um valor observado de um indicador em uma data específica (série temporal).
+model Observation {
+  id          String   @id @default(uuid())
+  indicatorId String   @map("indicator_id")
+  date        DateTime @db.Date
+  value       Decimal  @db.Decimal(18, 8)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  indicator Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  @@unique([indicatorId, date])
+  @@map("observations")
 }

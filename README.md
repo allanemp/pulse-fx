@@ -99,6 +99,14 @@ Exemplo de corpo do `POST`:
 }
 ```
 
+### Indicadores (modelo de dados)
+
+O schema do Prisma também já tem `indicators` (catálogo de indicadores, ex.:
+SELIC, IPCA) e `observations` (série temporal: um valor por indicador por
+data, com `@@unique([indicatorId, date])` e FK `ON DELETE CASCADE` para
+`indicators`). Por enquanto é só persistência — ainda não há casos de uso,
+controllers nem rotas para esse domínio (veja `apps/api/prisma/schema.prisma`).
+
 ### Documentação interativa (Swagger)
 
 Com a API rodando, o contrato HTTP completo (rotas, schemas, exemplos) está
