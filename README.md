@@ -363,6 +363,69 @@ npm run dev:api    # http://localhost:3333
 npm run dev:web    # http://localhost:5173 (em outro terminal)
 ```
 
+## Deploy em produção (Cloudflare Tunnel)
+
+`docker-compose.prod.yml` é o compose de produção, pensado pra um único
+servidor Linux. Diferenças em relação ao `docker-compose.yml` de
+desenvolvimento:
+
+- **Nenhuma porta é publicada no host** — nem Postgres, nem Redis, nem a API,
+  nem o front. Todos os serviços só se enxergam pela rede interna do
+  compose (`internal`).
+- Quem expõe o app pra internet é o container `cloudflared`: ele abre uma
+  conexão de saída até a Cloudflare (por isso não precisa liberar 80/443 no
+  servidor nem no roteador) e a Cloudflare encaminha as requisições públicas
+  pra ele, que repassa pros containers `api`/`web` pelo nome do serviço
+  (`http://api:3333`, `http://web:80`). Esse mecanismo se chama **Cloudflare
+  Tunnel**.
+
+### 1. Criar o túnel na Cloudflare
+
+Pré-requisito: o domínio já precisa estar usando os nameservers da
+Cloudflare (plano gratuito serve).
+
+1. No [dashboard da Cloudflare](https://one.dash.cloudflare.com/) vá em
+   **Zero Trust → Networks → Tunnels → Create a tunnel**.
+2. Escolha **Cloudflared**, dê um nome (ex.: `pulse-fx`) e selecione o
+   ambiente **Docker** — a Cloudflare mostra um comando com um token longo;
+   copie só o valor do token (depois de `--token`).
+3. Ainda na tela do túnel, em **Public Hostname**, crie duas entradas:
+   - `api.seudominio.com` → tipo `HTTP`, URL `api:3333`
+   - `app.seudominio.com` → tipo `HTTP`, URL `web:80`
+
+   (o hostname interno bate com o nome do serviço no compose — é assim que o
+   `cloudflared` sabe pra qual container mandar cada domínio).
+
+### 2. Configurar o servidor
+
+```bash
+cp .env.production.example .env.production
+```
+
+Edite `.env.production`:
+
+- `POSTGRES_PASSWORD` / `API_TOKEN` — gere valores novos com `openssl rand -hex 32` (não reaproveite os de desenvolvimento)
+- `CORS_ORIGIN=https://app.seudominio.com`
+- `VITE_API_URL=https://api.seudominio.com`
+- `CLOUDFLARE_TUNNEL_TOKEN` — o token copiado no passo 1
+
+### 3. Subir
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
+A API aplica as migrações do Prisma e roda o seed automaticamente ao subir
+(mesmo `docker-entrypoint.sh` do desenvolvimento). Depois de alguns segundos
+`https://app.seudominio.com` e `https://api.seudominio.com/docs` já devem
+responder.
+
+Pra atualizar depois de um `git pull` com mudanças novas:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
+
 ## Scripts úteis (raiz)
 
 | Script                  | Descrição                                     |

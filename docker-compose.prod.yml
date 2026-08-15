@@ -1,0 +1,125 @@
+name: pulse-fx
+
+# Compose de produção — pensado pra rodar num único servidor Linux atrás de
+# um Cloudflare Tunnel (container `cloudflared`), sem expor nenhuma porta
+# publicamente: nem a API, nem o front, nem Postgres/Redis. Quem conecta em
+# `api`/`web` de fora é só o `cloudflared`, pela rede interna do compose.
+#
+# Uso:
+#   cp .env.production.example .env.production
+#   # preencha .env.production (segredos reais, domínios reais, token do túnel)
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Ver README.md > "Deploy em produção (Cloudflare Tunnel)" para o passo a
+# passo de criar o túnel e apontar os hostnames públicos.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER em .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD em .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB em .env.production}
+    volumes:
+      - pulsefx_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - pulsefx_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  # UI web pra inspecionar o Redis. Sem porta publicada de propósito — nem
+  # deve, nem precisa ser acessível de fora. Pra usar pontualmente:
+  #   docker compose -f docker-compose.prod.yml --env-file .env.production \
+  #     --profile tools run --rm -p 127.0.0.1:8081:8081 redis-commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    profiles: ['tools']
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      # Precisa ser a origem pública do front (ex.: https://app.seudominio.com)
+      # — é o único domínio que o cors() da API aceita.
+      CORS_ORIGIN: ${CORS_ORIGIN:?defina CORS_ORIGIN (https://app.seudominio.com) em .env.production}
+      API_TOKEN: ${API_TOKEN:?defina API_TOKEN em .env.production}
+    networks:
+      - internal
+    # Sem "ports": só alcançável dentro da rede docker, em "api:3333" — quem
+    # expõe pra internet é o cloudflared.
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked no bundle estático no build — precisa ser a origem pública da
+        # API (ex.: https://api.seudominio.com), não o hostname interno.
+        VITE_API_URL: ${VITE_API_URL:?defina VITE_API_URL (https://api.seudominio.com) em .env.production}
+        VITE_API_TOKEN: ${API_TOKEN:?defina API_TOKEN em .env.production}
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - internal
+    # Idem: sem "ports", só alcançável via cloudflared em "web:80".
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # Token do túnel nomeado, criado no dashboard da Cloudflare Zero Trust.
+      # Os hostnames públicos (app.seudominio.com -> web:80,
+      # api.seudominio.com -> api:3333) são configurados lá também, não aqui
+      # — ver README.md.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?defina CLOUDFLARE_TUNNEL_TOKEN em .env.production}
+    depends_on:
+      - api
+      - web
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pulsefx_postgres_data:
+  pulsefx_redis_data:
