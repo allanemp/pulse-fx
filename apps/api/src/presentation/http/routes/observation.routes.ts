@@ -11,6 +11,7 @@ export function observationRoutes(controller: ObservationController): Router {
 
   router.post('/', asyncHandler(controller.create));
   router.get('/', asyncHandler(controller.list));
+  router.get('/latest', asyncHandler(controller.latest));
 
   return router;
 }

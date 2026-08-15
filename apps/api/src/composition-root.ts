@@ -1,12 +1,16 @@
 import { GetLatestExchangeRate } from './application/use-cases/GetLatestExchangeRate.js';
+import { GetLatestObservation } from './application/use-cases/GetLatestObservation.js';
 import { ListExchangeRates } from './application/use-cases/ListExchangeRates.js';
 import { ListIndicators } from './application/use-cases/ListIndicators.js';
 import { ListObservations } from './application/use-cases/ListObservations.js';
+import { MarkIndicatorAsFavorite } from './application/use-cases/MarkIndicatorAsFavorite.js';
 import { RegisterExchangeRate } from './application/use-cases/RegisterExchangeRate.js';
 import { RegisterIndicator } from './application/use-cases/RegisterIndicator.js';
 import { RegisterObservation } from './application/use-cases/RegisterObservation.js';
+import { UnmarkIndicatorAsFavorite } from './application/use-cases/UnmarkIndicatorAsFavorite.js';
 import { prisma } from './infrastructure/database/prisma/client.js';
 import { PrismaExchangeRateRepository } from './infrastructure/database/repositories/PrismaExchangeRateRepository.js';
+import { PrismaFavoriteRepository } from './infrastructure/database/repositories/PrismaFavoriteRepository.js';
 import { PrismaIndicatorRepository } from './infrastructure/database/repositories/PrismaIndicatorRepository.js';
 import { PrismaObservationRepository } from './infrastructure/database/repositories/PrismaObservationRepository.js';
 import { createApp } from './presentation/http/app.js';
@@ -35,14 +39,30 @@ export function buildApp() {
 
   const indicatorRepository = new PrismaIndicatorRepository(prisma);
   const observationRepository = new PrismaObservationRepository(prisma);
+  const favoriteRepository = new PrismaFavoriteRepository(prisma);
 
   const registerIndicator = new RegisterIndicator(indicatorRepository);
-  const listIndicators = new ListIndicators(indicatorRepository);
+  const listIndicators = new ListIndicators(indicatorRepository, favoriteRepository);
   const registerObservation = new RegisterObservation(observationRepository, indicatorRepository);
   const listObservations = new ListObservations(observationRepository, indicatorRepository);
+  const getLatestObservation = new GetLatestObservation(observationRepository, indicatorRepository);
+  const markIndicatorAsFavorite = new MarkIndicatorAsFavorite(
+    favoriteRepository,
+    indicatorRepository,
+  );
+  const unmarkIndicatorAsFavorite = new UnmarkIndicatorAsFavorite(favoriteRepository);
 
-  const indicatorController = new IndicatorController(registerIndicator, listIndicators);
-  const observationController = new ObservationController(registerObservation, listObservations);
+  const indicatorController = new IndicatorController(
+    registerIndicator,
+    listIndicators,
+    markIndicatorAsFavorite,
+    unmarkIndicatorAsFavorite,
+  );
+  const observationController = new ObservationController(
+    registerObservation,
+    listObservations,
+    getLatestObservation,
+  );
 
   return createApp({ exchangeRateController, indicatorController, observationController });
 }

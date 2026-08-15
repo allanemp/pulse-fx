@@ -1,9 +1,5 @@
 import { z } from 'zod';
 
-export const indicatorIdParamSchema = z.object({
-  indicatorId: z.string().uuid('indicatorId deve ser um UUID válido.'),
-});
-
 export const createObservationSchema = z.object({
   date: z.coerce.date({
     errorMap: () => ({ message: 'date deve ser uma data válida (YYYY-MM-DD).' }),
@@ -16,6 +12,5 @@ export const listObservationsQuerySchema = z.object({
   to: z.coerce.date().optional(),
 });
 
-export type IndicatorIdParam = z.infer<typeof indicatorIdParamSchema>;
 export type CreateObservationBody = z.infer<typeof createObservationSchema>;
 export type ListObservationsQuery = z.infer<typeof listObservationsQuerySchema>;

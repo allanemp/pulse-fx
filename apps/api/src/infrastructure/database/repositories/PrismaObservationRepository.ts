@@ -63,6 +63,15 @@ export class PrismaObservationRepository implements ObservationRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findLatestByIndicatorId(indicatorId: string): Promise<Observation | null> {
+    const row = await this.prisma.observation.findFirst({
+      where: { indicatorId },
+      orderBy: { date: 'desc' },
+    });
+
+    return row ? this.toDomain(row) : null;
+  }
+
   private toDomain(row: ObservationModel): Observation {
     return Observation.restore({
       id: row.id,

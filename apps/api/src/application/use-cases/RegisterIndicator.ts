@@ -6,6 +6,8 @@ import { toIndicatorDTO } from '../dtos/IndicatorMapper.js';
 
 export interface RegisterIndicatorInput {
   name: string;
+  unit?: string | undefined;
+  description?: string | undefined;
   sourceEndpoint?: string | undefined;
 }
 
@@ -30,6 +32,6 @@ export class RegisterIndicator {
 
     await this.indicatorRepository.save(indicator);
 
-    return toIndicatorDTO(indicator);
+    return toIndicatorDTO(indicator, false);
   }
 }

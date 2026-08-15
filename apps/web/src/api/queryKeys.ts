@@ -1,9 +1,14 @@
 /**
- * Fábrica de query keys do domínio de cotações — mantém as chaves usadas
- * por `useQuery`/`useMutation`/invalidação em um único lugar, evitando
- * strings mágicas espalhadas pelos hooks.
+ * Fábrica de query keys — mantém as chaves usadas por
+ * `useQuery`/`useMutation`/invalidação em um único lugar, evitando strings
+ * mágicas espalhadas pelos hooks.
  */
-export const exchangeRateKeys = {
-  all: ['exchange-rates'] as const,
-  lists: () => [...exchangeRateKeys.all, 'list'] as const,
+export const indicatorKeys = {
+  all: ['indicators'] as const,
+  lists: () => [...indicatorKeys.all, 'list'] as const,
+};
+
+export const observationKeys = {
+  all: ['observations'] as const,
+  list: (indicatorId: string) => [...observationKeys.all, 'list', indicatorId] as const,
 };

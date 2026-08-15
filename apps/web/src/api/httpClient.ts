@@ -49,4 +49,6 @@ export const httpClient = {
   get: <T>(path: string) => request<T>(path, { method: 'GET' }),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
+  put: <T>(path: string) => request<T>(path, { method: 'PUT' }),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };

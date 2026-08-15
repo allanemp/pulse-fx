@@ -8,7 +8,7 @@ arquitetura em camadas, PostgreSQL e execução via Docker Compose.
 
 | Camada          | Tecnologia                                                     |
 | --------------- | -------------------------------------------------------------- |
-| Frontend        | React 18 + TypeScript + Vite + TanStack Query                  |
+| Frontend        | React 18 + TypeScript + Vite + TanStack Query + TailwindCSS    |
 | Backend         | Node.js + TypeScript + Express, arquitetura em camadas (SOLID) |
 | Persistência    | PostgreSQL 16 + Prisma ORM                                     |
 | Containerização | Docker + Docker Compose                                        |
@@ -33,6 +33,7 @@ pulse-fx/
 │           ├── app/              # Configuração do QueryClient (TanStack Query)
 │           ├── hooks/            # Hooks de dados (useQuery/useMutation por caso de uso)
 │           ├── components/       # Componentes de UI
+│           ├── utils/            # Funções puras (ex.: cálculo de variação de indicador)
 │           └── pages/            # Páginas
 ├── packages/
 │   └── shared/                # Tipos/DTOs compartilhados entre api e web
@@ -80,7 +81,13 @@ em vez de `useState`/`useEffect` manuais:
 ## Domínio de exemplo
 
 Para servir como esqueleto funcional e não apenas uma casca vazia, a API
-expõe um domínio simples de **cotações de câmbio**:
+expõe um domínio simples de **cotações de câmbio**.
+
+**Só existe na API — sem UI no frontend.** O usuário final não cadastra nem
+edita dados na mão em nenhum domínio deste projeto; tudo chega via
+integração com fontes externas, como o seed do BCB descrito mais abaixo. A
+rota `POST /api/exchange-rates` fica disponível para uma futura integração
+automática seguir o mesmo padrão.
 
 | Método | Rota                                                            | Descrição                                |
 | ------ | --------------------------------------------------------------- | ---------------------------------------- |
@@ -106,12 +113,15 @@ infrastructure → presentation), como o de cotações: `indicators` é o
 catálogo (ex.: SELIC, IPCA) e `observations` é a série temporal de valores
 de cada indicador, um por data (`@@unique([indicatorId, date])` no Prisma).
 
-| Método | Rota                                                   | Descrição                                         |
-| ------ | ------------------------------------------------------ | ------------------------------------------------- |
-| POST   | `/api/indicators`                                      | Cadastra um novo indicador                        |
-| GET    | `/api/indicators`                                      | Lista os indicadores cadastrados                  |
-| POST   | `/api/indicators/{indicatorId}/observations`           | Registra uma observação (data + valor)            |
-| GET    | `/api/indicators/{indicatorId}/observations?from=&to=` | Lista a série temporal (filtro opcional por data) |
+| Método | Rota                                                   | Descrição                                           |
+| ------ | ------------------------------------------------------ | --------------------------------------------------- |
+| POST   | `/api/indicators`                                      | Cadastra um novo indicador                          |
+| GET    | `/api/indicators`                                      | Lista os indicadores cadastrados (com `isFavorite`) |
+| PUT    | `/api/indicators/{indicatorId}/favorite`               | Marca o indicador como favorito (idempotente)       |
+| DELETE | `/api/indicators/{indicatorId}/favorite`               | Desmarca o indicador como favorito (idempotente)    |
+| POST   | `/api/indicators/{indicatorId}/observations`           | Registra uma observação (data + valor)              |
+| GET    | `/api/indicators/{indicatorId}/observations?from=&to=` | Lista a série temporal (filtro opcional por data)   |
+| GET    | `/api/indicators/{indicatorId}/observations/latest`    | Observação mais recente do indicador                |
 
 Exemplo de corpo do `POST /api/indicators/{indicatorId}/observations`:
 
@@ -135,15 +145,56 @@ no banco porque cada indicador tem o seu.
 
 #### Seed: Selic acumulada no mês
 
-```bash
-npm run prisma:seed --workspace apps/api
-```
-
 Cadastra (ou atualiza, se já existir) o indicador "Selic acumulada no mês" e
 busca a série completa em `BCB_API_BASE_URL` + `source_endpoint`
 (dados abertos do Banco Central — [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes)),
 fazendo upsert de cada observação por `(indicatorId, date)` — rodar de novo
 não duplica nem falha. Script em `apps/api/prisma/seed.ts`.
+
+- **Docker Compose**: roda sozinho a cada início do container `api`
+  (`docker-entrypoint.sh`, depois das migrações). Falha de rede no seed
+  (ex.: sem internet no primeiro boot) não impede a API de subir — só fica
+  sem dados até você rodar de novo. `seed.ts` é compilado para JS no build
+  (`dist/prisma/seed.js`) especificamente para rodar só com `node`, sem
+  `tsx` (dependência de desenvolvimento, fora da imagem de produção). Para
+  rodar de novo manualmente:
+  ```bash
+  docker compose exec api node dist/prisma/seed.js
+  ```
+- **Ambiente local (sem Docker)**:
+  ```bash
+  npm run prisma:seed --workspace apps/api
+  ```
+
+#### Favoritos
+
+`favorites` marca indicadores como favoritos — sem sistema de usuários no
+projeto, é um estado global por indicador (a existência da linha já é o
+"favoritado"), não por usuário. `ListIndicators` resolve `isFavorite` numa
+única consulta extra (sem N+1), não como propriedade da entidade
+`Indicator` — favoritar não é um fato sobre o indicador em si, é sobre outra
+tabela.
+
+### Dashboard: cards de indicadores (TailwindCSS)
+
+O frontend é só leitura: os cards de indicadores (TailwindCSS v4, via
+plugin do Vite) são a única tela — sem formulário de cadastro, sem tabela
+de cotações. Todo dado vem de integração (seed/API), nunca de digitação
+manual do usuário final.
+
+- **Card**: nome, unidade, valor mais recente, data e variação percentual
+  vs. a observação anterior (verde alta / vermelho baixa), com botão de
+  favoritar (★/☆) que atualiza a lista de forma otimista.
+- **Clique no card**: abre um modal com a descrição/fonte do indicador e a
+  tabela histórica completa (`GET .../observations`) — a mesma query já
+  usada para calcular a variação do card, então abrir o modal não refaz o
+  fetch (cache compartilhado do TanStack Query).
+- **Rodapé fixo**: aviso de que os dados têm fins educacionais/informativos,
+  visível em toda a aplicação.
+
+Optei por **tabela** em vez de gráfico na visão de detalhes para não
+introduzir uma biblioteca de charts nesta entrega — dá pra trocar depois se
+fizer sentido.
 
 ### Documentação interativa (Swagger)
 
@@ -189,23 +240,19 @@ mesmo valor — no Docker Compose, ambos vêm da única variável `API_TOKEN` do
 
 ### Opção 1 — Docker Compose (recomendado)
 
-Sobe PostgreSQL, API e frontend, com a API aplicando as migrações do Prisma
-automaticamente ao iniciar.
+Sobe PostgreSQL, API e frontend. A API aplica as migrações do Prisma e roda
+o seed do indicador Selic automaticamente ao iniciar (requer rede para
+acessar a API do BCB — se falhar, a API sobe do mesmo jeito, só sem dados;
+veja "Seed" acima para rodar de novo manualmente).
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173
-- API: http://localhost:3333
+- Frontend: http://localhost:5173 — é essa a URL que você abre no navegador
+- API: http://localhost:3333 (usada pelo frontend; `/docs` tem o Swagger)
 - PostgreSQL: localhost:5432
-
-Para popular o indicador Selic (opcional, requer rede para acessar a API do
-BCB): `tsx` é uma dependência de desenvolvimento e não vai para a imagem de
-produção da API, então rode o seed localmente contra o Postgres do Compose —
-`cp apps/api/.env.example apps/api/.env && npm install && npm run prisma:seed --workspace apps/api`
-(veja a Opção 2 abaixo para mais detalhes do setup local).
 
 ### Opção 2 — Ambiente local (sem Docker para api/web)
 

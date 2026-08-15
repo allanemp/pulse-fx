@@ -28,12 +28,17 @@ export interface ApiErrorResponse {
 export interface IndicatorDTO {
   id: string;
   name: string;
+  unit?: string;
+  description?: string;
   sourceEndpoint?: string;
+  isFavorite: boolean;
   createdAt: string;
 }
 
 export interface CreateIndicatorInput {
   name: string;
+  unit?: string;
+  description?: string;
   sourceEndpoint?: string;
 }
 

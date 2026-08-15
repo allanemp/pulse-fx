@@ -28,12 +28,18 @@ model ExchangeRate {
 model Indicator {
   id             String   @id @default(uuid())
   name           String   @unique
+  /// Unidade/moeda de exibição do valor (ex.: "% a.a.", "BRL").
+  unit           String?
+  /// Texto explicando o que é a série, a fonte original (ex.: BCB, FRED) e
+  /// ressalvas sobre os dados (ex.: frequência de atualização).
+  description    String?
   /// Complemento de URL específico deste indicador na fonte externa (ex.: BCB SGS),
   /// combinado em runtime com o domínio base configurado via env (ex.: BCB_API_BASE_URL).
   sourceEndpoint String?  @map("source_endpoint")
   createdAt      DateTime @default(now()) @map("created_at")
 
   observations Observation[]
+  favorite     Favorite?
 
   @@map("indicators")
 }
@@ -50,4 +56,18 @@ model Observation {
 
   @@unique([indicatorId, date])
   @@map("observations")
+}
+
+/// Marca um indicador como favorito. Sem sistema de usuários no projeto, é
+/// um estado global por indicador (não por usuário) — a existência da linha
+/// já é o "favoritado", por isso `indicatorId` é único (um indicador só pode
+/// ter uma linha de favorito).
+model Favorite {
+  id          String   @id @default(uuid())
+  indicatorId String   @unique @map("indicator_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  indicator Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+
+  @@map("favorites")
 }

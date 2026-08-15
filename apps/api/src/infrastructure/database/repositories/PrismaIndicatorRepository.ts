@@ -10,6 +10,8 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
       data: {
         id: indicator.id,
         name: indicator.name,
+        unit: indicator.unit ?? null,
+        description: indicator.description ?? null,
         sourceEndpoint: indicator.sourceEndpoint ?? null,
         createdAt: indicator.createdAt,
       },
@@ -38,6 +40,8 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
     return Indicator.restore({
       id: row.id,
       name: row.name,
+      unit: row.unit ?? undefined,
+      description: row.description ?? undefined,
       sourceEndpoint: row.sourceEndpoint ?? undefined,
       createdAt: row.createdAt,
     });

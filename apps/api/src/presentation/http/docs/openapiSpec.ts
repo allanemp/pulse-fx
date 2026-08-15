@@ -91,21 +91,35 @@ const indicatorSchema = {
   properties: {
     id: { type: 'string', format: 'uuid' },
     name: { type: 'string', example: 'Selic acumulada no mês' },
+    unit: {
+      type: 'string',
+      description: 'Unidade/moeda de exibição do valor.',
+      example: '% a.a.',
+    },
+    description: {
+      type: 'string',
+      description: 'O que é a série, fonte original (ex.: BCB, FRED) e ressalvas sobre os dados.',
+      example:
+        'Taxa Selic acumulada no mês, anualizada. Fonte: Banco Central do Brasil (SGS 4390).',
+    },
     sourceEndpoint: {
       type: 'string',
       description:
         'Complemento de URL na fonte externa, combinado com BCB_API_BASE_URL. Ausente para indicadores sem sincronização automática.',
       example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
     },
+    isFavorite: { type: 'boolean', example: false },
     createdAt: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'name', 'createdAt'],
+  required: ['id', 'name', 'isFavorite', 'createdAt'],
 };
 
 const createIndicatorInputSchema = {
   type: 'object',
   properties: {
     name: { type: 'string', minLength: 1, maxLength: 120, example: 'Selic acumulada no mês' },
+    unit: { type: 'string', minLength: 1, maxLength: 40, example: '% a.a.' },
+    description: { type: 'string', minLength: 1, maxLength: 2000 },
     sourceEndpoint: {
       type: 'string',
       minLength: 1,
@@ -266,6 +280,7 @@ export const openApiSpec = {
               },
             },
           },
+          '401': unauthorizedResponse,
         },
       },
       post: {
@@ -285,6 +300,29 @@ export const openApiSpec = {
           '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': domainErrorResponse,
+        },
+      },
+    },
+    '/api/indicators/{indicatorId}/favorite': {
+      put: {
+        tags: ['Indicators'],
+        summary: 'Marca o indicador como favorito (idempotente)',
+        parameters: [indicatorIdPathParam],
+        responses: {
+          '204': { description: 'Indicador marcado como favorito.' },
+          '401': unauthorizedResponse,
+          '400': badRequestResponse,
+          '422': domainErrorResponse,
+        },
+      },
+      delete: {
+        tags: ['Indicators'],
+        summary: 'Desmarca o indicador como favorito (idempotente)',
+        parameters: [indicatorIdPathParam],
+        responses: {
+          '204': { description: 'Indicador desmarcado como favorito (ou já não estava).' },
+          '401': unauthorizedResponse,
+          '400': badRequestResponse,
         },
       },
     },
@@ -336,6 +374,24 @@ export const openApiSpec = {
           '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': domainErrorResponse,
+        },
+      },
+    },
+    '/api/indicators/{indicatorId}/observations/latest': {
+      get: {
+        tags: ['Indicators'],
+        summary: 'Observação mais recente de um indicador',
+        parameters: [indicatorIdPathParam],
+        responses: {
+          '200': {
+            description: 'Observação mais recente encontrada.',
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/Observation' } },
+            },
+          },
+          '401': unauthorizedResponse,
+          '400': badRequestResponse,
+          '422': notFoundResponse,
         },
       },
     },

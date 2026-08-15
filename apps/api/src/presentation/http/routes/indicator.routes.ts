@@ -12,6 +12,8 @@ export function indicatorRoutes(
 
   router.post('/', asyncHandler(indicatorController.create));
   router.get('/', asyncHandler(indicatorController.list));
+  router.put('/:indicatorId/favorite', asyncHandler(indicatorController.markFavorite));
+  router.delete('/:indicatorId/favorite', asyncHandler(indicatorController.unmarkFavorite));
   router.use('/:indicatorId/observations', observationRoutes(observationController));
 
   return router;

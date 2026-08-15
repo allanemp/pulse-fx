@@ -30,4 +30,12 @@ export class InMemoryObservationRepository implements ObservationRepository {
       return true;
     });
   }
+
+  async findLatestByIndicatorId(indicatorId: string): Promise<Observation | null> {
+    const matches = this.items
+      .filter((item) => item.indicatorId === indicatorId)
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return matches[0] ?? null;
+  }
 }

@@ -20,12 +20,20 @@ const prisma = new PrismaClient();
 
 interface IndicatorSeedDefinition {
   name: string;
+  unit: string;
+  description: string;
   sourceEndpoint: string;
 }
 
 const INDICATORS: IndicatorSeedDefinition[] = [
   {
     name: 'Selic acumulada no mês',
+    unit: '% a.m.',
+    description:
+      'Taxa de juros Selic acumulada no mês, expressa em percentual mensal. ' +
+      'Fonte: Banco Central do Brasil, Sistema Gerenciador de Séries Temporais ' +
+      '(SGS), série 4390. Dados publicados em dias úteis; o valor de um mês só ' +
+      'fica completo após o fechamento do mês.',
     sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
   },
 ];
@@ -60,8 +68,17 @@ async function fetchSeries(sourceEndpoint: string): Promise<BcbSeriesEntry[]> {
 async function seedIndicator(definition: IndicatorSeedDefinition): Promise<void> {
   const indicator = await prisma.indicator.upsert({
     where: { name: definition.name },
-    update: { sourceEndpoint: definition.sourceEndpoint },
-    create: { name: definition.name, sourceEndpoint: definition.sourceEndpoint },
+    update: {
+      unit: definition.unit,
+      description: definition.description,
+      sourceEndpoint: definition.sourceEndpoint,
+    },
+    create: {
+      name: definition.name,
+      unit: definition.unit,
+      description: definition.description,
+      sourceEndpoint: definition.sourceEndpoint,
+    },
   });
 
   logger.info(`Indicador "${indicator.name}" (${indicator.id})`);

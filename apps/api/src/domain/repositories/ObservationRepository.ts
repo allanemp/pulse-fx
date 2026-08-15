@@ -14,4 +14,5 @@ export interface ObservationFilter {
 export interface ObservationRepository {
   save(observation: Observation): Promise<void>;
   findMany(filter?: ObservationFilter): Promise<Observation[]>;
+  findLatestByIndicatorId(indicatorId: string): Promise<Observation | null>;
 }
