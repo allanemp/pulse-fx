@@ -31,6 +31,21 @@ services:
       timeout: 5s
       retries: 10
 
+  # UI web pra inspecionar o Redis (chaves da fila BullMQ etc.) — não sobe
+  # com `docker compose up` normal, só sob demanda:
+  #   docker compose up -d redis-commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    restart: unless-stopped
+    profiles: ['tools']
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - '${REDIS_COMMANDER_PORT:-8081}:8081'
+
   api:
     build:
       context: .

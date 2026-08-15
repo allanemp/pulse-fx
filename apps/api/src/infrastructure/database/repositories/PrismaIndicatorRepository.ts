@@ -12,6 +12,7 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
         name: indicator.name,
         unit: indicator.unit ?? null,
         description: indicator.description ?? null,
+        source: indicator.source ?? null,
         sourceEndpoint: indicator.sourceEndpoint ?? null,
         createdAt: indicator.createdAt,
       },
@@ -38,7 +39,7 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
 
   async findSyncable(): Promise<Indicator[]> {
     const rows = await this.prisma.indicator.findMany({
-      where: { sourceEndpoint: { not: null } },
+      where: { source: { not: null }, sourceEndpoint: { not: null } },
     });
 
     return rows.map((row) => this.toDomain(row));
@@ -50,6 +51,7 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
       name: row.name,
       unit: row.unit ?? undefined,
       description: row.description ?? undefined,
+      source: row.source ?? undefined,
       sourceEndpoint: row.sourceEndpoint ?? undefined,
       createdAt: row.createdAt,
     });

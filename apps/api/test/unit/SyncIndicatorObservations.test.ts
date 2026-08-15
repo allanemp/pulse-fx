@@ -3,8 +3,12 @@ import { SyncIndicatorObservations } from '../../src/application/use-cases/SyncI
 import { Indicator } from '../../src/domain/entities/Indicator.js';
 import { DomainError } from '../../src/domain/errors/DomainError.js';
 import { FakeIndicatorDataSource } from './FakeIndicatorDataSource.js';
+import { FakeIndicatorDataSourceRegistry } from './FakeIndicatorDataSourceRegistry.js';
 import { InMemoryIndicatorRepository } from './InMemoryIndicatorRepository.js';
 import { InMemoryObservationRepository } from './InMemoryObservationRepository.js';
+
+const SOURCE_ENDPOINT = '/dados/serie/bcdata.sgs.4390/dados?formato=json';
+const FAKE_SOURCE = 'fake-source';
 
 describe('SyncIndicatorObservations (caso de uso)', () => {
   let indicatorRepository: InMemoryIndicatorRepository;
@@ -15,23 +19,25 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
     observationRepository = new InMemoryObservationRepository();
   });
 
-  it('busca a série na fonte externa e grava cada ponto', async () => {
+  it('resolve a fonte certa pelo "source" do indicador e grava cada ponto', async () => {
     const indicator = Indicator.create({
       name: 'SELIC',
-      sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+      source: FAKE_SOURCE,
+      sourceEndpoint: SOURCE_ENDPOINT,
     });
     await indicatorRepository.save(indicator);
 
     const dataSource = new FakeIndicatorDataSource({
-      '/dados/serie/bcdata.sgs.4390/dados?formato=json': [
+      [SOURCE_ENDPOINT]: [
         { date: new Date('2026-07-01T00:00:00.000Z'), value: 1.22 },
         { date: new Date('2026-08-01T00:00:00.000Z'), value: 0.52 },
       ],
     });
+    const registry = new FakeIndicatorDataSourceRegistry({ [FAKE_SOURCE]: dataSource });
     const useCase = new SyncIndicatorObservations(
       observationRepository,
       indicatorRepository,
-      dataSource,
+      registry,
     );
 
     const result = await useCase.execute({ indicatorId: indicator.id });
@@ -43,25 +49,25 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
   it('atualiza (upsert) uma observação já existente em vez de duplicar', async () => {
     const indicator = Indicator.create({
       name: 'SELIC',
-      sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+      source: FAKE_SOURCE,
+      sourceEndpoint: SOURCE_ENDPOINT,
     });
     await indicatorRepository.save(indicator);
 
     const dataSource = new FakeIndicatorDataSource({
-      '/dados/serie/bcdata.sgs.4390/dados?formato=json': [
-        { date: new Date('2026-08-01T00:00:00.000Z'), value: 0.52 },
-      ],
+      [SOURCE_ENDPOINT]: [{ date: new Date('2026-08-01T00:00:00.000Z'), value: 0.52 }],
     });
+    const registry = new FakeIndicatorDataSourceRegistry({ [FAKE_SOURCE]: dataSource });
     const useCase = new SyncIndicatorObservations(
       observationRepository,
       indicatorRepository,
-      dataSource,
+      registry,
     );
 
     await useCase.execute({ indicatorId: indicator.id });
 
     // Fonte revisou o valor do mesmo mês — reprocessar não deve duplicar.
-    dataSource.setSeries('/dados/serie/bcdata.sgs.4390/dados?formato=json', [
+    dataSource.setSeries(SOURCE_ENDPOINT, [
       { date: new Date('2026-08-01T00:00:00.000Z'), value: 0.55 },
     ]);
     await useCase.execute({ indicatorId: indicator.id });
@@ -70,12 +76,30 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
     expect(observationRepository.items[0]?.value).toBe(0.55);
   });
 
-  it('rejeita quando o indicador não existe', async () => {
-    const dataSource = new FakeIndicatorDataSource({});
+  it('rejeita quando o "source" do indicador não tem fonte registrada', async () => {
+    const indicator = Indicator.create({
+      name: 'SELIC',
+      source: 'fonte-desconhecida',
+      sourceEndpoint: SOURCE_ENDPOINT,
+    });
+    await indicatorRepository.save(indicator);
+
+    const registry = new FakeIndicatorDataSourceRegistry({});
     const useCase = new SyncIndicatorObservations(
       observationRepository,
       indicatorRepository,
-      dataSource,
+      registry,
+    );
+
+    await expect(useCase.execute({ indicatorId: indicator.id })).rejects.toThrow();
+  });
+
+  it('rejeita quando o indicador não existe', async () => {
+    const registry = new FakeIndicatorDataSourceRegistry({});
+    const useCase = new SyncIndicatorObservations(
+      observationRepository,
+      indicatorRepository,
+      registry,
     );
 
     await expect(useCase.execute({ indicatorId: 'indicador-inexistente' })).rejects.toThrow(
@@ -83,15 +107,15 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
     );
   });
 
-  it('rejeita quando o indicador não tem sourceEndpoint', async () => {
+  it('rejeita quando o indicador não tem source/sourceEndpoint', async () => {
     const indicator = Indicator.create({ name: 'Indicador manual' });
     await indicatorRepository.save(indicator);
 
-    const dataSource = new FakeIndicatorDataSource({});
+    const registry = new FakeIndicatorDataSourceRegistry({});
     const useCase = new SyncIndicatorObservations(
       observationRepository,
       indicatorRepository,
-      dataSource,
+      registry,
     );
 
     await expect(useCase.execute({ indicatorId: indicator.id })).rejects.toThrow(DomainError);

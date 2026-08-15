@@ -22,6 +22,8 @@ export class InMemoryIndicatorRepository implements IndicatorRepository {
   }
 
   async findSyncable(): Promise<Indicator[]> {
-    return this.items.filter((item) => item.sourceEndpoint !== undefined);
+    return this.items.filter(
+      (item) => item.source !== undefined && item.sourceEndpoint !== undefined,
+    );
   }
 }

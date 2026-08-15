@@ -137,20 +137,58 @@ Ao contrário de `ExchangeRate.rate`, `Observation.value` aceita números
 negativos — indicadores econômicos legitimamente assumem valores negativos
 (ex.: variação do PIB).
 
-Cada indicador pode guardar seu próprio `sourceEndpoint` — o complemento de
-URL numa fonte externa (ex.: `/dados/serie/bcdata.sgs.4390/dados?formato=json`
-no SGS do Banco Central), combinado em runtime com o domínio base
-configurado em `BCB_API_BASE_URL` (`.env`/`.env.example`). O domínio fica no
-env porque é o mesmo para qualquer indicador dessa fonte; o complemento fica
-no banco porque cada indicador tem o seu.
+#### Sincronização automática: `source` + `IndicatorDataSourceRegistry`
 
-#### Seed: Selic acumulada no mês
+Cada indicador sincronizável guarda `source` (ex.: `"bcb-sgs"`,
+`"bcb-ptax"`) + `sourceEndpoint` — sempre os dois juntos, ou nenhum
+(`Indicator.create` valida isso). `source` diz **qual**
+`IndicatorDataSource` sabe interpretar a fonte; `sourceEndpoint` é o dado
+que essa implementação específica precisa — o significado varia por fonte,
+não é sempre uma URL.
 
-Cadastra (ou atualiza, se já existir) o indicador "Selic acumulada no mês" e
-busca a série completa em `BCB_API_BASE_URL` + `source_endpoint`
-(dados abertos do Banco Central — [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes)),
-fazendo upsert de cada observação por `(indicatorId, date)` — rodar de novo
-não duplica nem falha. Script em `apps/api/prisma/seed.ts`.
+Isso existe porque **indicadores diferentes podem ter fontes com formatos
+totalmente diferentes**, mesmo dentro do mesmo órgão. Testamos isso na
+prática: o SGS do Banco Central devolve o mesmo formato genérico
+`{data, valor}` pra qualquer série (confirmado comparando Selic e IPCA —
+séries diferentes, resposta idêntica), mas o PTAX (câmbio) é **outra API do
+BCB**, em outro domínio (`olinda.bcb.gov.br`, não `api.bcb.gov.br`), com
+formato completamente diferente (OData, cotações aninhadas em `"value"`,
+campos `cotacaoCompra`/`cotacaoVenda` em vez de `valor`).
+
+- `IndicatorDataSourceRegistry` (`apps/api/src/infrastructure/gateways`) é
+  um dicionário `source -> IndicatorDataSource`. `SyncIndicatorObservations`
+  não conhece nenhuma implementação concreta — só pede ao registry a fonte
+  certa pro `indicator.source` que está processando.
+- `BcbSgsIndicatorDataSource`: `sourceEndpoint` é o complemento de URL,
+  combinado em runtime com `BCB_API_BASE_URL` (`.env`/`.env.example`) — o
+  mesmo domínio serve qualquer série do SGS.
+- `BcbPtaxIndicatorDataSource`: `sourceEndpoint` é a **data de início** da
+  série (`YYYY-MM-DD`), não uma URL — o fim do período é recalculado como
+  "hoje" a cada chamada, senão a sincronização diária nunca pegaria dado
+  novo. Guarda só a cotação de **venda** (`Observation` tem um único
+  `value` por data; a de compra fica de fora). O domínio (outro serviço do
+  BCB, outro host) fica em `BCB_PTAX_API_BASE_URL` — cada fonte com seu
+  próprio domínio configurável, nenhum hardcoded no código.
+- Adicionar uma nova fonte é registrar mais uma entrada no dicionário —
+  `SyncIndicatorObservations` e o worker da fila não mudam.
+
+Cada `IndicatorDataSource` valida a forma da resposta com Zod antes de
+interpretar qualquer coisa — se uma fonte externa mudar de formato, falha
+com uma mensagem clara em vez de propagar `NaN`/`Invalid Date` pro banco.
+
+#### Seed: Selic, IPCA e Dólar (PTAX)
+
+Cadastra (ou atualiza, se já existir) três indicadores e sincroniza a série
+completa de cada um via `SyncIndicatorObservations`:
+
+| Indicador                    | `source`   | Fonte                                                                                           |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
+| Selic acumulada no mês       | `bcb-sgs`  | [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes) |
+| IPCA (variação mensal)       | `bcb-sgs`  | SGS 433 (IBGE, via BCB)                                                                         |
+| Dólar comercial (PTAX venda) | `bcb-ptax` | Olinda/PTAX (BCB), últimos ~11 anos                                                             |
+
+Upsert por `(indicatorId, date)` — rodar de novo não duplica nem falha.
+Script em `apps/api/prisma/seed.ts`.
 
 - **Docker Compose**: roda sozinho a cada início do container `api`
   (`docker-entrypoint.sh`, depois das migrações). Falha de rede no seed
@@ -170,8 +208,10 @@ não duplica nem falha. Script em `apps/api/prisma/seed.ts`.
 #### Sincronização automática (BullMQ + Redis)
 
 Além do seed manual, todo dia **às 18h (horário de Brasília)** a API
-enfileira e sincroniza de novo todos os indicadores que têm
-`sourceEndpoint` configurado — sem precisar rodar nada na mão.
+enfileira e sincroniza de novo todos os indicadores que têm `source` e
+`sourceEndpoint` configurados (`findSyncable`) — qualquer indicador
+cadastrado com os dois entra automaticamente nesse disparo diário, sem
+precisar mexer em mais nada além de cadastrá-lo.
 
 - **Fila `indicator-sync`** (`apps/api/src/infrastructure/queue`), dois
   tipos de job:
@@ -195,6 +235,18 @@ enfileira e sincroniza de novo todos os indicadores que têm
 Variável de ambiente: `REDIS_URL` (default `redis://localhost:6379`, já
 configurado como `redis://redis:6379` no Docker Compose).
 
+Redis não é um serviço web — não dá pra abrir `localhost:6379` no
+navegador. Pra inspecionar as chaves (ex.: ver os jobs da fila), suba a UI
+opcional:
+
+```bash
+docker compose up -d redis-commander
+```
+
+Interface em http://localhost:8081. Não sobe com `docker compose up`
+normal (`profiles: ["tools"]`) — só quando pedido explicitamente, pra não
+engordar o setup padrão.
+
 #### Favoritos
 
 `favorites` marca indicadores como favoritos — sem sistema de usuários no
@@ -209,7 +261,13 @@ tabela.
 O frontend é só leitura: os cards de indicadores (TailwindCSS v4, via
 plugin do Vite) são a única tela — sem formulário de cadastro, sem tabela
 de cotações. Todo dado vem de integração (seed/API), nunca de digitação
-manual do usuário final.
+manual do usuário final. Duas seções empilhadas na mesma página (sem
+router — app pequeno o suficiente pra não precisar de rotas ainda):
+**"Meus Indicadores Favoritos"** (só os marcados, com estado vazio próprio)
+e **"Indicadores"** (todos). As duas leem a mesma query do TanStack Query
+(`useIndicators`) — favoritar num card atualiza as duas na hora, sem
+requisição extra. A grade de cards + modal (`IndicatorCardsGrid`) é
+compartilhada entre as duas seções, não duplicada.
 
 - **Card**: nome, unidade, valor mais recente, data e variação percentual
   vs. a observação anterior (verde alta / vermelho baixa), com botão de

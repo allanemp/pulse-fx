@@ -102,10 +102,17 @@ const indicatorSchema = {
       example:
         'Taxa Selic acumulada no mês, anualizada. Fonte: Banco Central do Brasil (SGS 4390).',
     },
+    source: {
+      type: 'string',
+      enum: ['bcb-sgs', 'bcb-ptax'],
+      description:
+        'Qual IndicatorDataSource sabe sincronizar este indicador. Sempre presente junto com sourceEndpoint, ou ausente junto.',
+      example: 'bcb-sgs',
+    },
     sourceEndpoint: {
       type: 'string',
       description:
-        'Complemento de URL na fonte externa, combinado com BCB_API_BASE_URL. Ausente para indicadores sem sincronização automática.',
+        'Como localizar a série na fonte identificada por "source" — o significado varia por fonte (URL para o SGS, data de início para o PTAX). Ausente para indicadores sem sincronização automática.',
       example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
     },
     isFavorite: { type: 'boolean', example: false },
@@ -120,6 +127,7 @@ const createIndicatorInputSchema = {
     name: { type: 'string', minLength: 1, maxLength: 120, example: 'Selic acumulada no mês' },
     unit: { type: 'string', minLength: 1, maxLength: 40, example: '% a.a.' },
     description: { type: 'string', minLength: 1, maxLength: 2000 },
+    source: { type: 'string', enum: ['bcb-sgs', 'bcb-ptax'], example: 'bcb-sgs' },
     sourceEndpoint: {
       type: 'string',
       minLength: 1,

@@ -1,3 +1,4 @@
+import { FavoriteIndicatorsSection } from '../components/FavoriteIndicatorsSection';
 import { IndicatorsGrid } from '../components/IndicatorsGrid';
 
 export function DashboardPage() {
@@ -8,6 +9,7 @@ export function DashboardPage() {
         <p>Monitoramento de indicadores econômicos</p>
       </header>
 
+      <FavoriteIndicatorsSection />
       <IndicatorsGrid />
     </main>
   );

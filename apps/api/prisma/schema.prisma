@@ -33,8 +33,16 @@ model Indicator {
   /// Texto explicando o que é a série, a fonte original (ex.: BCB, FRED) e
   /// ressalvas sobre os dados (ex.: frequência de atualização).
   description    String?
-  /// Complemento de URL específico deste indicador na fonte externa (ex.: BCB SGS),
-  /// combinado em runtime com o domínio base configurado via env (ex.: BCB_API_BASE_URL).
+  /// Identifica QUAL IndicatorDataSource sabe interpretar este indicador
+  /// (ex.: "bcb-sgs", "bcb-ptax") — ver `IndicatorDataSourceRegistry`.
+  /// Indicadores de fontes diferentes (ou até sistemas diferentes dentro do
+  /// mesmo órgão, como SGS vs. PTAX do BCB) retornam formatos diferentes.
+  source         String?
+  /// Como localizar a série NA fonte identificada por `source` — o
+  /// significado é decidido por cada IndicatorDataSource: para o SGS é um
+  /// complemento de URL combinado com BCB_API_BASE_URL; para o PTAX é a
+  /// data de início da série (a implementação recalcula "até hoje" a cada
+  /// sincronização).
   sourceEndpoint String?  @map("source_endpoint")
   createdAt      DateTime @default(now()) @map("created_at")
 

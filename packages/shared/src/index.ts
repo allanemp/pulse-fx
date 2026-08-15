@@ -30,6 +30,7 @@ export interface IndicatorDTO {
   name: string;
   unit?: string;
   description?: string;
+  source?: string;
   sourceEndpoint?: string;
   isFavorite: boolean;
   createdAt: string;
@@ -39,6 +40,7 @@ export interface CreateIndicatorInput {
   name: string;
   unit?: string;
   description?: string;
+  source?: string;
   sourceEndpoint?: string;
 }
 

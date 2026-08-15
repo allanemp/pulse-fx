@@ -17,4 +17,25 @@ describe('Indicator (entidade de domínio)', () => {
   it('rejeita nome maior que 120 caracteres', () => {
     expect(() => Indicator.create({ name: 'a'.repeat(121) })).toThrow(DomainError);
   });
+
+  it('aceita source e sourceEndpoint informados juntos', () => {
+    const indicator = Indicator.create({
+      name: 'SELIC',
+      source: 'bcb-sgs',
+      sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+    });
+
+    expect(indicator.source).toBe('bcb-sgs');
+    expect(indicator.sourceEndpoint).toBe('/dados/serie/bcdata.sgs.4390/dados?formato=json');
+  });
+
+  it('rejeita source sem sourceEndpoint', () => {
+    expect(() => Indicator.create({ name: 'SELIC', source: 'bcb-sgs' })).toThrow(DomainError);
+  });
+
+  it('rejeita sourceEndpoint sem source', () => {
+    expect(() =>
+      Indicator.create({ name: 'SELIC', sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados' }),
+    ).toThrow(DomainError);
+  });
 });

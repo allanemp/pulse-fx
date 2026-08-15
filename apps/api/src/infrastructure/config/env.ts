@@ -16,12 +16,23 @@ const envSchema = z.object({
    */
   API_TOKEN: z.string().min(16, 'API_TOKEN deve ter pelo menos 16 caracteres.'),
   /**
-   * Domínio base das APIs de dados abertos do Banco Central, usado pelo seed
-   * (`prisma/seed.ts`) para buscar séries de indicadores. O complemento
-   * específico de cada série (ex.: `/dados/serie/bcdata.sgs.4390/dados`) fica
-   * salvo por indicador em `indicators.source_endpoint`, não aqui.
+   * Domínio base do SGS (Sistema Gerenciador de Séries Temporais) do Banco
+   * Central, usado por `BcbSgsIndicatorDataSource` (seed e sincronização
+   * diária) para buscar séries de indicadores como Selic e IPCA. O
+   * complemento específico de cada série (ex.: `/dados/serie/bcdata.sgs.4390/dados`)
+   * fica salvo por indicador em `indicators.source_endpoint`, não aqui.
    */
   BCB_API_BASE_URL: z.string().url().default('https://api.bcb.gov.br'),
+  /**
+   * Domínio base do PTAX (câmbio) do Banco Central, usado por
+   * `BcbPtaxIndicatorDataSource` — API diferente do SGS, em outro domínio,
+   * por isso tem sua própria variável em vez de reaproveitar
+   * `BCB_API_BASE_URL`.
+   */
+  BCB_PTAX_API_BASE_URL: z
+    .string()
+    .url()
+    .default('https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata'),
   /** Conexão do Redis usada pela fila BullMQ de sincronização de indicadores. */
   REDIS_URL: z.string().default('redis://localhost:6379'),
 });

@@ -15,7 +15,7 @@ import { PrismaExchangeRateRepository } from './infrastructure/database/reposito
 import { PrismaFavoriteRepository } from './infrastructure/database/repositories/PrismaFavoriteRepository.js';
 import { PrismaIndicatorRepository } from './infrastructure/database/repositories/PrismaIndicatorRepository.js';
 import { PrismaObservationRepository } from './infrastructure/database/repositories/PrismaObservationRepository.js';
-import { BcbIndicatorDataSource } from './infrastructure/gateways/BcbIndicatorDataSource.js';
+import { MapIndicatorDataSourceRegistry } from './infrastructure/gateways/IndicatorDataSourceRegistry.js';
 import { createIndicatorSyncWorker } from './infrastructure/queue/indicatorSyncWorker.js';
 import { createApp } from './presentation/http/app.js';
 import { ExchangeRateController } from './presentation/http/controllers/ExchangeRateController.js';
@@ -80,13 +80,13 @@ export function buildApp() {
 export function buildIndicatorSyncWorker() {
   const indicatorRepository = new PrismaIndicatorRepository(prisma);
   const observationRepository = new PrismaObservationRepository(prisma);
-  const dataSource = new BcbIndicatorDataSource();
+  const dataSourceRegistry = new MapIndicatorDataSourceRegistry();
 
   const listSyncableIndicatorIds = new ListSyncableIndicatorIds(indicatorRepository);
   const syncIndicatorObservations = new SyncIndicatorObservations(
     observationRepository,
     indicatorRepository,
-    dataSource,
+    dataSourceRegistry,
   );
 
   return createIndicatorSyncWorker({ listSyncableIndicatorIds, syncIndicatorObservations });

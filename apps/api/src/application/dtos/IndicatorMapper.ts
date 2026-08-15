@@ -12,6 +12,7 @@ export function toIndicatorDTO(entity: Indicator, isFavorite: boolean): Indicato
     name: entity.name,
     ...(entity.unit ? { unit: entity.unit } : {}),
     ...(entity.description ? { description: entity.description } : {}),
+    ...(entity.source ? { source: entity.source } : {}),
     ...(entity.sourceEndpoint ? { sourceEndpoint: entity.sourceEndpoint } : {}),
     isFavorite,
     createdAt: entity.createdAt.toISOString(),
