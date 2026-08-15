@@ -15,6 +15,9 @@ FROM base AS deps
 COPY package.json package-lock.json* ./
 COPY packages/shared/package.json packages/shared/package.json
 COPY apps/api/package.json apps/api/package.json
+# O postinstall do apps/api roda "prisma generate", que precisa do schema
+# disponível já nesta etapa (senão falha por não achar prisma/schema.prisma).
+COPY apps/api/prisma apps/api/prisma
 RUN npm ci
 
 # ---- build: compila o pacote compartilhado e a API ----

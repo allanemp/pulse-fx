@@ -6,6 +6,7 @@ import { toIndicatorDTO } from '../dtos/IndicatorMapper.js';
 
 export interface RegisterIndicatorInput {
   name: string;
+  sourceEndpoint?: string | undefined;
 }
 
 /**

@@ -26,9 +26,12 @@ model ExchangeRate {
 
 /// Catálogo de indicadores (ex.: SELIC, IPCA, CDI) — cada um com sua série de observações.
 model Indicator {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid())
+  name           String   @unique
+  /// Complemento de URL específico deste indicador na fonte externa (ex.: BCB SGS),
+  /// combinado em runtime com o domínio base configurado via env (ex.: BCB_API_BASE_URL).
+  sourceEndpoint String?  @map("source_endpoint")
+  createdAt      DateTime @default(now()) @map("created_at")
 
   observations Observation[]
 

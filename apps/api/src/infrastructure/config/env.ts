@@ -7,6 +7,13 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL é obrigatória.'),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /**
+   * Domínio base das APIs de dados abertos do Banco Central, usado pelo seed
+   * (`prisma/seed.ts`) para buscar séries de indicadores. O complemento
+   * específico de cada série (ex.: `/dados/serie/bcdata.sgs.4390/dados`) fica
+   * salvo por indicador em `indicators.source_endpoint`, não aqui.
+   */
+  BCB_API_BASE_URL: z.string().url().default('https://api.bcb.gov.br'),
 });
 
 function loadEnv() {

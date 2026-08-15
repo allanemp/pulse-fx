@@ -126,6 +126,25 @@ Ao contrário de `ExchangeRate.rate`, `Observation.value` aceita números
 negativos — indicadores econômicos legitimamente assumem valores negativos
 (ex.: variação do PIB).
 
+Cada indicador pode guardar seu próprio `sourceEndpoint` — o complemento de
+URL numa fonte externa (ex.: `/dados/serie/bcdata.sgs.4390/dados?formato=json`
+no SGS do Banco Central), combinado em runtime com o domínio base
+configurado em `BCB_API_BASE_URL` (`.env`/`.env.example`). O domínio fica no
+env porque é o mesmo para qualquer indicador dessa fonte; o complemento fica
+no banco porque cada indicador tem o seu.
+
+#### Seed: Selic acumulada no mês
+
+```bash
+npm run prisma:seed --workspace apps/api
+```
+
+Cadastra (ou atualiza, se já existir) o indicador "Selic acumulada no mês" e
+busca a série completa em `BCB_API_BASE_URL` + `source_endpoint`
+(dados abertos do Banco Central — [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes)),
+fazendo upsert de cada observação por `(indicatorId, date)` — rodar de novo
+não duplica nem falha. Script em `apps/api/prisma/seed.ts`.
+
 ### Documentação interativa (Swagger)
 
 Com a API rodando, o contrato HTTP completo (rotas, schemas, exemplos) está
@@ -154,6 +173,12 @@ docker compose up --build
 - API: http://localhost:3333
 - PostgreSQL: localhost:5432
 
+Para popular o indicador Selic (opcional, requer rede para acessar a API do
+BCB): `tsx` é uma dependência de desenvolvimento e não vai para a imagem de
+produção da API, então rode o seed localmente contra o Postgres do Compose —
+`cp apps/api/.env.example apps/api/.env && npm install && npm run prisma:seed --workspace apps/api`
+(veja a Opção 2 abaixo para mais detalhes do setup local).
+
 ### Opção 2 — Ambiente local (sem Docker para api/web)
 
 Requer Node.js 20+ e um PostgreSQL acessível (pode usar `docker compose up postgres`
@@ -167,6 +192,7 @@ cp apps/web/.env.example apps/web/.env
 
 npm run build:shared
 npm run prisma:migrate --workspace apps/api   # cria/atualiza o banco local
+npm run prisma:seed --workspace apps/api      # opcional: popula o indicador Selic
 
 npm run dev:api    # http://localhost:3333
 npm run dev:web    # http://localhost:5173 (em outro terminal)

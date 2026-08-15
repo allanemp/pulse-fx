@@ -85,7 +85,13 @@ const indicatorSchema = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
-    name: { type: 'string', example: 'SELIC' },
+    name: { type: 'string', example: 'Selic acumulada no mês' },
+    sourceEndpoint: {
+      type: 'string',
+      description:
+        'Complemento de URL na fonte externa, combinado com BCB_API_BASE_URL. Ausente para indicadores sem sincronização automática.',
+      example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+    },
     createdAt: { type: 'string', format: 'date-time' },
   },
   required: ['id', 'name', 'createdAt'],
@@ -94,7 +100,13 @@ const indicatorSchema = {
 const createIndicatorInputSchema = {
   type: 'object',
   properties: {
-    name: { type: 'string', minLength: 1, maxLength: 120, example: 'SELIC' },
+    name: { type: 'string', minLength: 1, maxLength: 120, example: 'Selic acumulada no mês' },
+    sourceEndpoint: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 300,
+      example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+    },
   },
   required: ['name'],
 };
