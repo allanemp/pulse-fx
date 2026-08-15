@@ -157,6 +157,34 @@ O documento fica em `apps/api/src/presentation/http/docs/openapiSpec.ts` — é
 código, não gerado a partir de comentários espalhados pelos controllers,
 então revisar o contrato é revisar esse arquivo.
 
+## Segurança
+
+Duas camadas, cada uma cobrindo o que a outra não cobre:
+
+- **CORS** (`CORS_ORIGIN`): a API só inclui os cabeçalhos de CORS para a
+  origem configurada — qualquer outro site que tente chamar a API a partir
+  do JS de um navegador é bloqueado pelo próprio navegador (a API responde,
+  mas o JS da página não consegue ler a resposta).
+- **Token de API** (`API_TOKEN`): toda rota sob `/api/*` exige
+  `Authorization: Bearer <token>` (ver
+  `apps/api/src/presentation/http/middlewares/apiTokenAuth.ts`). Sem
+  default — a API se recusa a subir sem um valor configurado. `/health` e
+  `/docs` continuam públicas.
+
+**Importante**: o frontend é uma SPA pública, então `VITE_API_TOKEN` é
+embutido no bundle JS em build time e é extraível por qualquer pessoa que
+abra o DevTools ou inspecione os arquivos servidos — **não é um segredo
+real**. Isso barra scraping casual e chamadas de terceiros que não olharam
+o código, mas não é autenticação de usuário nem impede alguém que copiou o
+token de chamar a API diretamente (o que também contorna o CORS, já que
+CORS só é aplicado pelo navegador). Para autenticação de verdade, seria
+necessário login por usuário (sessão/JWT) ou um backend-for-frontend que
+guarde o segredo do lado do servidor — fora do escopo atual.
+
+`API_TOKEN` (backend) e `VITE_API_TOKEN` (build do frontend) precisam ter o
+mesmo valor — no Docker Compose, ambos vêm da única variável `API_TOKEN` do
+`.env` da raiz. Gere um valor novo por ambiente com `openssl rand -hex 32`.
+
 ## Como rodar
 
 ### Opção 1 — Docker Compose (recomendado)

@@ -8,6 +8,7 @@ import type { ExchangeRateController } from './controllers/ExchangeRateControlle
 import type { IndicatorController } from './controllers/IndicatorController.js';
 import type { ObservationController } from './controllers/ObservationController.js';
 import { openApiSpec } from './docs/openapiSpec.js';
+import { apiTokenAuth } from './middlewares/apiTokenAuth.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { exchangeRateRoutes } from './routes/exchangeRate.routes.js';
 import { healthRoutes } from './routes/health.routes.js';
@@ -30,6 +31,9 @@ export function createApp(deps: {
   app.use(pinoHttp({ logger, autoLogging: env.NODE_ENV !== 'test' }));
 
   app.use('/health', healthRoutes());
+
+  // Tudo sob /api exige o token compartilhado com o frontend (ver apiTokenAuth).
+  app.use('/api', apiTokenAuth(env.API_TOKEN));
   app.use('/api/exchange-rates', exchangeRateRoutes(deps.exchangeRateController));
   app.use('/api/indicators', indicatorRoutes(deps.indicatorController, deps.observationController));
 

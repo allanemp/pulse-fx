@@ -1,6 +1,7 @@
 import type { ApiErrorResponse } from '@pulse-fx/shared';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
+const API_TOKEN = import.meta.env.VITE_API_TOKEN;
 
 export class ApiError extends Error {
   constructor(
@@ -21,7 +22,11 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_TOKEN}`,
+      ...init?.headers,
+    },
   });
 
   if (!response.ok) {

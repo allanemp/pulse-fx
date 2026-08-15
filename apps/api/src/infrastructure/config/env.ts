@@ -5,8 +5,16 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3333),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL é obrigatória.'),
-  CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  /** Único domínio autorizado a chamar a API a partir do navegador (ver `cors()` em `app.ts`). */
+  CORS_ORIGIN: z.string().url().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /**
+   * Segredo compartilhado que o frontend envia em `Authorization: Bearer <token>`
+   * em toda chamada a `/api/*` (ver `apiTokenAuth` middleware). Sem default:
+   * a API se recusa a subir sem um valor explícito — um controle de segurança
+   * não deve ter um bypass silencioso.
+   */
+  API_TOKEN: z.string().min(16, 'API_TOKEN deve ter pelo menos 16 caracteres.'),
   /**
    * Domínio base das APIs de dados abertos do Banco Central, usado pelo seed
    * (`prisma/seed.ts`) para buscar séries de indicadores. O complemento

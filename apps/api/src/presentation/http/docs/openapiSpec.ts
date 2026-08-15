@@ -73,6 +73,11 @@ const notFoundResponse = {
   content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
 };
 
+const unauthorizedResponse = {
+  description: 'Token de API ausente ou inválido (ver `apiTokenAuth`).',
+  content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
+};
+
 const currencyQueryParam = (name: string, required: boolean) => ({
   name,
   in: 'query',
@@ -150,6 +155,7 @@ export const openApiSpec = {
       'o contrato HTTP exposto pela camada de apresentação.',
   },
   servers: [{ url: '/', description: 'Servidor atual' }],
+  security: [{ bearerAuth: [] }],
   tags: [
     { name: 'Exchange Rates', description: 'Cotações de câmbio' },
     {
@@ -163,6 +169,7 @@ export const openApiSpec = {
       get: {
         tags: ['Health'],
         summary: 'Health check',
+        security: [],
         responses: {
           '200': {
             description: 'Serviço disponível.',
@@ -197,6 +204,7 @@ export const openApiSpec = {
               },
             },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
         },
       },
@@ -218,6 +226,7 @@ export const openApiSpec = {
               'application/json': { schema: { $ref: '#/components/schemas/ExchangeRate' } },
             },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': domainErrorResponse,
         },
@@ -238,6 +247,7 @@ export const openApiSpec = {
               'application/json': { schema: { $ref: '#/components/schemas/ExchangeRate' } },
             },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': notFoundResponse,
         },
@@ -272,6 +282,7 @@ export const openApiSpec = {
             description: 'Indicador cadastrado com sucesso.',
             content: { 'application/json': { schema: { $ref: '#/components/schemas/Indicator' } } },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': domainErrorResponse,
         },
@@ -300,6 +311,7 @@ export const openApiSpec = {
               },
             },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': notFoundResponse,
         },
@@ -321,6 +333,7 @@ export const openApiSpec = {
               'application/json': { schema: { $ref: '#/components/schemas/Observation' } },
             },
           },
+          '401': unauthorizedResponse,
           '400': badRequestResponse,
           '422': domainErrorResponse,
         },
@@ -336,6 +349,14 @@ export const openApiSpec = {
       Observation: observationSchema,
       CreateObservationInput: createObservationInputSchema,
       ApiErrorResponse: apiErrorResponseSchema,
+    },
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        description:
+          'Token compartilhado (API_TOKEN) enviado como "Authorization: Bearer <token>".',
+      },
     },
   },
 };

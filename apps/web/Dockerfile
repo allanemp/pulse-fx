@@ -13,7 +13,9 @@ RUN npm ci
 # ---- build ----
 FROM deps AS build
 ARG VITE_API_URL=http://localhost:3333
+ARG VITE_API_TOKEN
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_API_TOKEN=$VITE_API_TOKEN
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/web apps/web

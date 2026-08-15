@@ -31,6 +31,9 @@ services:
       PORT: 3333
       DATABASE_URL: postgresql://${POSTGRES_USER:-pulsefx}:${POSTGRES_PASSWORD:-pulsefx}@postgres:5432/${POSTGRES_DB:-pulsefx}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      # Sem valor padrão de propósito: a API deve recusar subir sem um
+      # segredo real configurado (ver .env.example).
+      API_TOKEN: ${API_TOKEN:?defina API_TOKEN no .env — veja .env.example}
     ports:
       - '${API_PORT:-3333}:3333'
 
@@ -40,6 +43,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3333}
+        VITE_API_TOKEN: ${API_TOKEN:?defina API_TOKEN no .env — veja .env.example}
     restart: unless-stopped
     depends_on:
       - api
