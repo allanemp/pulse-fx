@@ -22,6 +22,20 @@ export class InMemoryObservationRepository implements ObservationRepository {
     this.items.push(observation);
   }
 
+  async upsert(observation: Observation): Promise<void> {
+    const index = this.items.findIndex(
+      (item) =>
+        item.indicatorId === observation.indicatorId &&
+        item.date.getTime() === observation.date.getTime(),
+    );
+
+    if (index === -1) {
+      this.items.push(observation);
+    } else {
+      this.items[index] = observation;
+    }
+  }
+
   async findMany(filter?: ObservationFilter): Promise<Observation[]> {
     return this.items.filter((item) => {
       if (filter?.indicatorId && item.indicatorId !== filter.indicatorId) return false;

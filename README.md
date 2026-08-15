@@ -11,6 +11,7 @@ arquitetura em camadas, PostgreSQL e execução via Docker Compose.
 | Frontend        | React 18 + TypeScript + Vite + TanStack Query + TailwindCSS    |
 | Backend         | Node.js + TypeScript + Express, arquitetura em camadas (SOLID) |
 | Persistência    | PostgreSQL 16 + Prisma ORM                                     |
+| Filas           | BullMQ + Redis (sincronização diária de indicadores)           |
 | Containerização | Docker + Docker Compose                                        |
 | Testes          | Vitest                                                         |
 | Qualidade       | ESLint + Prettier, workspaces npm                              |
@@ -166,6 +167,34 @@ não duplica nem falha. Script em `apps/api/prisma/seed.ts`.
   npm run prisma:seed --workspace apps/api
   ```
 
+#### Sincronização automática (BullMQ + Redis)
+
+Além do seed manual, todo dia **às 18h (horário de Brasília)** a API
+enfileira e sincroniza de novo todos os indicadores que têm
+`sourceEndpoint` configurado — sem precisar rodar nada na mão.
+
+- **Fila `indicator-sync`** (`apps/api/src/infrastructure/queue`), dois
+  tipos de job:
+  - `daily-trigger`: agendado via `Queue.upsertJobScheduler` (cron
+    `0 18 * * *`, `tz: America/Sao_Paulo`) — não busca dado nenhum, só
+    consulta quais indicadores são sincronizáveis (`ListSyncableIndicatorIds`)
+    e enfileira um `sync-indicator` para cada um.
+  - `sync-indicator`: roda `SyncIndicatorObservations` para um indicador —
+    o mesmo caso de uso usado pelo seed, então a lógica de "como buscar e
+    gravar a série de um indicador" existe num único lugar.
+- **`concurrency: 1`** de propósito: os indicadores são processados um a
+  um, não em paralelo, para nunca disparar requisições simultâneas contra
+  a mesma fonte externa (BCB) a partir do mesmo disparo diário.
+- O worker roda **dentro do processo da API** (`server.ts` monta o worker
+  junto com o Express) — não é um serviço separado. Simplifica o deploy
+  nesta fase do projeto; separar em um worker próprio é o próximo passo
+  natural se o volume de indicadores justificar.
+- `upsertJobScheduler` é idempotente: reiniciar a API não duplica o
+  agendamento, só garante que ele existe.
+
+Variável de ambiente: `REDIS_URL` (default `redis://localhost:6379`, já
+configurado como `redis://redis:6379` no Docker Compose).
+
 #### Favoritos
 
 `favorites` marca indicadores como favoritos — sem sistema de usuários no
@@ -253,11 +282,14 @@ docker compose up --build
 - Frontend: http://localhost:5173 — é essa a URL que você abre no navegador
 - API: http://localhost:3333 (usada pelo frontend; `/docs` tem o Swagger)
 - PostgreSQL: localhost:5432
+- Redis: localhost:6379 (fila de sincronização de indicadores)
 
 ### Opção 2 — Ambiente local (sem Docker para api/web)
 
-Requer Node.js 20+ e um PostgreSQL acessível (pode usar `docker compose up postgres`
-para subir só o banco).
+Requer Node.js 20+, um PostgreSQL e um Redis acessíveis (pode usar
+`docker compose up postgres redis` para subir só os dois). Sem Redis a API
+sobe normalmente — só a fila de sincronização de indicadores fica sem
+efeito até o Redis estar disponível.
 
 ```bash
 npm install

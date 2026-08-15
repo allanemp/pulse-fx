@@ -36,6 +36,14 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findSyncable(): Promise<Indicator[]> {
+    const rows = await this.prisma.indicator.findMany({
+      where: { sourceEndpoint: { not: null } },
+    });
+
+    return rows.map((row) => this.toDomain(row));
+  }
+
   private toDomain(row: IndicatorModel): Indicator {
     return Indicator.restore({
       id: row.id,

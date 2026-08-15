@@ -22,6 +22,8 @@ const envSchema = z.object({
    * salvo por indicador em `indicators.source_endpoint`, não aqui.
    */
   BCB_API_BASE_URL: z.string().url().default('https://api.bcb.gov.br'),
+  /** Conexão do Redis usada pela fila BullMQ de sincronização de indicadores. */
+  REDIS_URL: z.string().default('redis://localhost:6379'),
 });
 
 function loadEnv() {

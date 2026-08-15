@@ -44,6 +44,22 @@ export class PrismaObservationRepository implements ObservationRepository {
     }
   }
 
+  async upsert(observation: Observation): Promise<void> {
+    await this.prisma.observation.upsert({
+      where: {
+        indicatorId_date: { indicatorId: observation.indicatorId, date: observation.date },
+      },
+      update: { value: observation.value },
+      create: {
+        id: observation.id,
+        indicatorId: observation.indicatorId,
+        date: observation.date,
+        value: observation.value,
+        createdAt: observation.createdAt,
+      },
+    });
+  }
+
   async findMany(filter?: ObservationFilter): Promise<Observation[]> {
     const rows = await this.prisma.observation.findMany({
       where: {

@@ -10,4 +10,6 @@ export interface IndicatorRepository {
   findById(id: string): Promise<Indicator | null>;
   findByName(name: string): Promise<Indicator | null>;
   findMany(): Promise<Indicator[]>;
+  /** Indicadores com `sourceEndpoint` configurado — os que a sincronização automática sabe atualizar. */
+  findSyncable(): Promise<Indicator[]>;
 }

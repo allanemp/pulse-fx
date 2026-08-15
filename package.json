@@ -45,6 +45,7 @@
     "esbuild@0.28.2": true,
     "esbuild@0.21.5": true,
     "prisma@5.22.0": true,
-    "@scarf/scarf": false
+    "@scarf/scarf": false,
+    "msgpackr-extract@3.0.4": true
   }
 }

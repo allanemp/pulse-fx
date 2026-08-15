@@ -1,20 +1,19 @@
 import { PrismaClient } from '@prisma/client';
-import { env } from '../src/infrastructure/config/env.js';
+import { SyncIndicatorObservations } from '../src/application/use-cases/SyncIndicatorObservations.js';
+import { PrismaIndicatorRepository } from '../src/infrastructure/database/repositories/PrismaIndicatorRepository.js';
+import { PrismaObservationRepository } from '../src/infrastructure/database/repositories/PrismaObservationRepository.js';
+import { BcbIndicatorDataSource } from '../src/infrastructure/gateways/BcbIndicatorDataSource.js';
 import { logger } from '../src/infrastructure/logging/logger.js';
 
 /**
- * Seed de indicadores/observações a partir de fontes externas.
- *
- * Diferente do restante da API, este script fala direto com o Prisma
- * (upsert idempotente) em vez de passar pelos casos de uso: seeds são uma
- * ferramenta de bootstrap de dados, não uma requisição de um usuário, e
- * `RegisterIndicator`/`RegisterObservation` são desenhados para rejeitar
- * duplicatas (o comportamento certo para a API, errado para reprocessar
- * este script com segurança).
- *
- * Cada indicador guarda seu próprio complemento de URL (`sourceEndpoint`);
- * o domínio base da fonte fica em `BCB_API_BASE_URL` (env), combinados aqui
- * na hora de buscar os dados.
+ * Seed de indicadores a partir de fontes externas — cadastra/atualiza o
+ * indicador (upsert direto no Prisma, não via `RegisterIndicator`: esse
+ * caso de uso rejeita nome duplicado, o comportamento certo para a API,
+ * errado para reprocessar este script com segurança) e delega a busca das
+ * observações para `SyncIndicatorObservations` — o mesmo caso de uso usado
+ * pelo worker da fila de sincronização diária (ver
+ * `src/infrastructure/queue`), para não duplicar a lógica de "como buscar
+ * e gravar a série de um indicador" em dois lugares.
  */
 const prisma = new PrismaClient();
 
@@ -38,34 +37,10 @@ const INDICATORS: IndicatorSeedDefinition[] = [
   },
 ];
 
-/** Formato retornado pela API do SGS/BCB: `{"data":"DD/MM/YYYY","valor":"1.16"}`. */
-interface BcbSeriesEntry {
-  data: string;
-  valor: string;
-}
-
-function parseBcbDate(value: string): Date {
-  const [dayStr, monthStr, yearStr] = value.split('/');
-
-  if (!dayStr || !monthStr || !yearStr) {
-    throw new Error(`Data em formato inesperado: "${value}" (esperado DD/MM/YYYY).`);
-  }
-
-  return new Date(Date.UTC(Number(yearStr), Number(monthStr) - 1, Number(dayStr)));
-}
-
-async function fetchSeries(sourceEndpoint: string): Promise<BcbSeriesEntry[]> {
-  const url = `${env.BCB_API_BASE_URL}${sourceEndpoint}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Falha ao buscar série em ${url}: HTTP ${response.status}`);
-  }
-
-  return (await response.json()) as BcbSeriesEntry[];
-}
-
-async function seedIndicator(definition: IndicatorSeedDefinition): Promise<void> {
+async function seedIndicator(
+  definition: IndicatorSeedDefinition,
+  syncIndicatorObservations: SyncIndicatorObservations,
+): Promise<void> {
   const indicator = await prisma.indicator.upsert({
     where: { name: definition.name },
     update: {
@@ -83,29 +58,23 @@ async function seedIndicator(definition: IndicatorSeedDefinition): Promise<void>
 
   logger.info(`Indicador "${indicator.name}" (${indicator.id})`);
 
-  const entries = await fetchSeries(definition.sourceEndpoint);
-  logger.info(
-    `  ${entries.length} observações encontradas em ${env.BCB_API_BASE_URL}${definition.sourceEndpoint}`,
-  );
+  const result = await syncIndicatorObservations.execute({ indicatorId: indicator.id });
 
-  for (const entry of entries) {
-    await prisma.observation.upsert({
-      where: { indicatorId_date: { indicatorId: indicator.id, date: parseBcbDate(entry.data) } },
-      update: { value: Number(entry.valor) },
-      create: {
-        indicatorId: indicator.id,
-        date: parseBcbDate(entry.data),
-        value: Number(entry.valor),
-      },
-    });
-  }
-
-  logger.info(`  ${entries.length} observações upsertadas.`);
+  logger.info(`  ${result.observationsSynced} observações sincronizadas.`);
 }
 
 async function main(): Promise<void> {
+  const indicatorRepository = new PrismaIndicatorRepository(prisma);
+  const observationRepository = new PrismaObservationRepository(prisma);
+  const dataSource = new BcbIndicatorDataSource();
+  const syncIndicatorObservations = new SyncIndicatorObservations(
+    observationRepository,
+    indicatorRepository,
+    dataSource,
+  );
+
   for (const definition of INDICATORS) {
-    await seedIndicator(definition);
+    await seedIndicator(definition, syncIndicatorObservations);
   }
 }
 
