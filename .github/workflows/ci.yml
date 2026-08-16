@@ -53,3 +53,6 @@ jobs:
 
       - name: Testes
         run: npm test
+
+      - name: Testes de integração (Postgres real)
+        run: npm run test:integration --workspace apps/api

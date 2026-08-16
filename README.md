@@ -520,7 +520,7 @@ cobre a janela de histórico por `frequency` e o fallback de
 `filterByPeriod`; `ObservationsTable.test.tsx` cobre a paginação; e
 `useToggleFavorite.test.tsx` cobre a atualização otimista do cache do
 TanStack Query — aplica na hora, desfaz sozinha se a API falhar) em
-sequência. 47 testes no total.
+sequência. 47 testes no total (mais 12 de integração — ver abaixo).
 
 Os testes de componente/hook do frontend usam `environment: 'node'` como
 padrão no Vitest (mais rápido — a maior parte da suíte é lógica pura, sem
@@ -530,6 +530,40 @@ topo, nos que realmente renderizam algo.
 Os testes de unidade dos casos de uso usam repositórios em memória (ex.:
 `InMemoryIndicatorRepository`) em vez do PostgreSQL, evidenciando o
 desacoplamento entre `application` e `infrastructure`.
+
+### Testes de integração
+
+```bash
+npm run test:integration --workspace apps/api
+```
+
+Diferente dos unitários (fakes em memória, zero infraestrutura externa),
+esses batem em coisa de verdade — precisam de um Postgres alcançável em
+`localhost:5432` (o do `docker compose up postgres` já serve). Dois
+arquivos, em `apps/api/test/integration/`:
+
+- **`PrismaIndicatorRepository.integration.test.ts`** — o repositório
+  Prisma contra um Postgres real, não um fake: confirma que o mapeamento
+  linha-do-banco → entidade de domínio funciona de verdade (incluindo
+  `frequency`, campos opcionais nulos virando `undefined`), coisa que os
+  testes unitários com `InMemoryIndicatorRepository` não conseguem pegar
+  (o fake nunca teve um schema de banco pra divergir).
+- **`http.integration.test.ts`** — a app Express de verdade (`createApp`),
+  via `supertest` fazendo requisição HTTP real (não chamando o controller
+  direto): token ausente/errado → 401, `indicatorId` inválido → 400 com
+  `details`, rota desconhecida → 404, favoritar refletido no GET seguinte.
+  Usa repositórios em memória de propósito — o que esse arquivo cobre é a
+  fiação HTTP (rotas, `apiTokenAuth`, validação Zod, `errorHandler`), não o
+  banco (isso já é o outro arquivo).
+
+Banco de teste separado do de desenvolvimento: `ensureTestDatabase()`
+(`test/integration/testDatabase.ts`) cria (se não existir) e migra o banco
+`pulsefx_test` automaticamente antes de rodar — não precisa de setup manual,
+e os testes podem apagar/recriar dados livremente sem arriscar o que está
+em `pulsefx` (o banco que `npm run dev:api` usa). Um `vitest.integration.config.ts`
+separado do padrão (`vitest.config.ts`, só `test/unit/`) evita que `npm test`
+comece a exigir Postgres pra rodar. Roda também no CI
+(`.github/workflows/ci.yml`), contra o serviço Postgres que o job já sobe.
 
 ## Convenções
 
