@@ -513,9 +513,19 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 npm test
 ```
 
-Roda os testes de `apps/api` (Vitest — 10 arquivos, casos de uso, entidades
-e os decorators de cache) e de `apps/web` (Vitest — regra de janela de
-histórico por `frequency` e o fallback de `filterByPeriod`) em sequência.
+Roda os testes de `apps/api` (Vitest — 10 arquivos: casos de uso, entidades
+e os decorators de cache, tudo com fakes/repositórios em memória) e de
+`apps/web` (Vitest + Testing Library — 3 arquivos: `indicatorStats.test.ts`
+cobre a janela de histórico por `frequency` e o fallback de
+`filterByPeriod`; `ObservationsTable.test.tsx` cobre a paginação; e
+`useToggleFavorite.test.tsx` cobre a atualização otimista do cache do
+TanStack Query — aplica na hora, desfaz sozinha se a API falhar) em
+sequência. 47 testes no total.
+
+Os testes de componente/hook do frontend usam `environment: 'node'` como
+padrão no Vitest (mais rápido — a maior parte da suíte é lógica pura, sem
+DOM) e ligam `jsdom` só por arquivo, com `// @vitest-environment jsdom` no
+topo, nos que realmente renderizam algo.
 
 Os testes de unidade dos casos de uso usam repositórios em memória (ex.:
 `InMemoryIndicatorRepository`) em vez do PostgreSQL, evidenciando o

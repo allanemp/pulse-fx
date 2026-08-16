@@ -8,6 +8,11 @@ export default defineConfig({
     port: 5173,
   },
   test: {
+    // Padrão leve (sem DOM) — os testes que renderizam componente ligam
+    // jsdom por arquivo com `// @vitest-environment jsdom` no topo, em vez
+    // de pagar o custo do jsdom no suite inteiro (a maioria dos testes é
+    // de lógica pura, não precisa de DOM).
     environment: 'node',
+    setupFiles: ['./src/test/setup.ts'],
   },
 });
