@@ -2,7 +2,7 @@
   "name": "pulse-fx",
   "version": "0.1.0",
   "private": true,
-  "description": "Pulse FX — plataforma de monitoramento de cotações de câmbio (monorepo).",
+  "description": "Pulse FX — plataforma de monitoramento de indicadores econômicos e câmbio (monorepo).",
   "license": "MIT",
   "type": "module",
   "workspaces": [
@@ -22,7 +22,7 @@
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm run test --workspace apps/api",
+    "test": "npm run test --workspace apps/api && npm run test --workspace apps/web",
     "typecheck": "npm run typecheck --workspace apps/api && npm run typecheck --workspace apps/web",
     "prisma:generate": "npm run prisma:generate --workspace apps/api",
     "prisma:migrate": "npm run prisma:migrate --workspace apps/api",

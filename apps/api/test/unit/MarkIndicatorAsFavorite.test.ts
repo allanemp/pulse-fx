@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MarkIndicatorAsFavorite } from '../../src/application/use-cases/MarkIndicatorAsFavorite.js';
 import { Indicator } from '../../src/domain/entities/Indicator.js';
+import { INDICATOR_FREQUENCIES } from '../../src/domain/entities/IndicatorFrequency.js';
 import { DomainError } from '../../src/domain/errors/DomainError.js';
 import { InMemoryFavoriteRepository } from './InMemoryFavoriteRepository.js';
 import { InMemoryIndicatorRepository } from './InMemoryIndicatorRepository.js';
@@ -17,7 +18,7 @@ describe('MarkIndicatorAsFavorite (caso de uso)', () => {
   });
 
   it('marca o indicador como favorito', async () => {
-    const indicator = Indicator.create({ name: 'SELIC' });
+    const indicator = Indicator.create({ name: 'SELIC', frequency: INDICATOR_FREQUENCIES.MONTHLY });
     await indicatorRepository.save(indicator);
 
     await useCase.execute({ indicatorId: indicator.id });
@@ -26,7 +27,7 @@ describe('MarkIndicatorAsFavorite (caso de uso)', () => {
   });
 
   it('é idempotente: marcar duas vezes não duplica', async () => {
-    const indicator = Indicator.create({ name: 'SELIC' });
+    const indicator = Indicator.create({ name: 'SELIC', frequency: INDICATOR_FREQUENCIES.MONTHLY });
     await indicatorRepository.save(indicator);
 
     await useCase.execute({ indicatorId: indicator.id });

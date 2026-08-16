@@ -4,6 +4,10 @@ import type {
   SyncIndicatorObservationsResult,
 } from '../src/application/use-cases/SyncIndicatorObservations.js';
 import { SyncIndicatorObservations } from '../src/application/use-cases/SyncIndicatorObservations.js';
+import {
+  INDICATOR_FREQUENCIES,
+  type IndicatorFrequency,
+} from '../src/domain/entities/IndicatorFrequency.js';
 import { INDICATOR_SOURCES } from '../src/domain/gateways/IndicatorSources.js';
 import { CacheInvalidatingCommand } from '../src/infrastructure/cache/CacheInvalidatingCommand.js';
 import { cacheKeys } from '../src/infrastructure/cache/cacheKeys.js';
@@ -34,6 +38,8 @@ interface IndicatorSeedDefinition {
   description: string;
   source: string;
   sourceEndpoint: string;
+  /** Cadência natural da fonte — ver `IndicatorFrequency` e a regra de variação % no README. */
+  frequency: IndicatorFrequency;
 }
 
 const INDICATORS: IndicatorSeedDefinition[] = [
@@ -47,6 +53,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
       'fica completo após o fechamento do mês.',
     source: INDICATOR_SOURCES.BCB_SGS,
     sourceEndpoint: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
+    frequency: INDICATOR_FREQUENCIES.MONTHLY,
   },
   {
     name: 'IPCA (variação mensal)',
@@ -58,6 +65,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
       'nos primeiros dias úteis do mês seguinte ao de referência.',
     source: INDICATOR_SOURCES.BCB_SGS,
     sourceEndpoint: '/dados/serie/bcdata.sgs.433/dados?formato=json',
+    frequency: INDICATOR_FREQUENCIES.MONTHLY,
   },
   {
     name: 'Dólar comercial (PTAX venda)',
@@ -75,6 +83,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
     // (~11 anos) para não deixar o seed lento em cada boot do Docker; dá pra
     // ampliar depois, é só trocar essa data.
     sourceEndpoint: '2015-01-01',
+    frequency: INDICATOR_FREQUENCIES.DAILY,
   },
   {
     name: 'Fed Funds Rate (EUA)',
@@ -90,6 +99,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
     // FredIndicatorDataSource. Mesma janela de 2015 em diante usada no PTAX,
     // pra comparar Selic x Fed Funds Rate no mesmo período.
     sourceEndpoint: 'DFF:2015-01-01',
+    frequency: INDICATOR_FREQUENCIES.DAILY,
   },
   {
     name: 'CPI americano (variação mensal)',
@@ -103,6 +113,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
     // "pch" pede ao próprio FRED a série já transformada em variação % mês a
     // mês — ver o comentário sobre "units" em FredIndicatorDataSource.
     sourceEndpoint: 'CPIAUCSL:2015-01-01:pch',
+    frequency: INDICATOR_FREQUENCIES.MONTHLY,
   },
   {
     name: 'Treasury 10 anos (EUA)',
@@ -114,6 +125,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
       'Publicada diariamente (dias úteis).',
     source: INDICATOR_SOURCES.FRED,
     sourceEndpoint: 'DGS10:2015-01-01',
+    frequency: INDICATOR_FREQUENCIES.DAILY,
   },
   {
     name: 'Índice do dólar (trade-weighted, EUA)',
@@ -125,6 +137,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
       'FRED, série DTWEXBGS. Publicada em dias úteis.',
     source: INDICATOR_SOURCES.FRED,
     sourceEndpoint: 'DTWEXBGS:2015-01-01',
+    frequency: INDICATOR_FREQUENCIES.DAILY,
   },
   {
     name: 'Taxa de desemprego (EUA)',
@@ -136,6 +149,7 @@ const INDICATORS: IndicatorSeedDefinition[] = [
       'UNRATE. Publicada mensalmente.',
     source: INDICATOR_SOURCES.FRED,
     sourceEndpoint: 'UNRATE:2015-01-01',
+    frequency: INDICATOR_FREQUENCIES.MONTHLY,
   },
 ];
 
@@ -154,6 +168,7 @@ async function seedIndicator(
       description: definition.description,
       source: definition.source,
       sourceEndpoint: definition.sourceEndpoint,
+      frequency: definition.frequency,
     },
     create: {
       name: definition.name,
@@ -161,6 +176,7 @@ async function seedIndicator(
       description: definition.description,
       source: definition.source,
       sourceEndpoint: definition.sourceEndpoint,
+      frequency: definition.frequency,
     },
   });
 

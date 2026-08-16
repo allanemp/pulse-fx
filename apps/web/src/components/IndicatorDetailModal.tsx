@@ -2,7 +2,7 @@ import type { IndicatorDTO } from '@pulse-fx/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { useObservations } from '../hooks/useObservations';
 import type { HistoryPeriod } from '../utils/indicatorStats';
-import { filterByPeriod } from '../utils/indicatorStats';
+import { filterByPeriod, periodOptionsForFrequency } from '../utils/indicatorStats';
 import { IndicatorHistoryChart } from './IndicatorHistoryChart';
 import { ObservationsTable } from './ObservationsTable';
 
@@ -10,11 +10,6 @@ interface IndicatorDetailModalProps {
   indicator: IndicatorDTO;
   onClose: () => void;
 }
-
-const PERIOD_OPTIONS: { value: HistoryPeriod; label: string }[] = [
-  { value: '30d', label: '30 dias' },
-  { value: '12m', label: '12 meses' },
-];
 
 /**
  * Visão aprofundada de um indicador: descrição/fonte/ressalvas, gráfico de
@@ -24,6 +19,7 @@ const PERIOD_OPTIONS: { value: HistoryPeriod; label: string }[] = [
  */
 export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModalProps) {
   const { data: observations, isLoading, isError } = useObservations(indicator.id);
+  const periodOptions = periodOptionsForFrequency(indicator.frequency);
   const [period, setPeriod] = useState<HistoryPeriod>('12m');
 
   useEffect(() => {
@@ -91,7 +87,7 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
                     aria-label="Período do gráfico"
                     className="flex rounded-md border border-slate-700 p-0.5 text-xs"
                   >
-                    {PERIOD_OPTIONS.map((option) => (
+                    {periodOptions.map((option) => (
                       <button
                         key={option.value}
                         type="button"

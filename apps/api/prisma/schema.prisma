@@ -32,6 +32,10 @@ model Indicator {
   /// data de início da série (a implementação recalcula "até hoje" a cada
   /// sincronização).
   sourceEndpoint String?  @map("source_endpoint")
+  /// Cadência natural de publicação da própria fonte: "daily" ou "monthly"
+  /// (ver `IndicatorFrequency`) — justifica a regra de variação % e as
+  /// janelas de histórico do frontend.
+  frequency      String
   createdAt      DateTime @default(now()) @map("created_at")
 
   observations Observation[]

@@ -105,6 +105,49 @@ diária mais abaixo). A API expõe só o necessário para o dashboard:
 `Observation.value` aceita números negativos — indicadores econômicos
 legitimamente assumem valores negativos (ex.: variação do PIB).
 
+#### Regra de variação % e janela de histórico por tipo de série
+
+Cada indicador guarda `frequency` (`"daily"` ou `"monthly"` — ver
+`IndicatorFrequency`), obrigatório, definido no seed. Não é só metadado: é
+o que justifica duas decisões de negócio explícitas.
+
+**Variação %** (`computeLatestChange`, `apps/web/src/utils/indicatorChange.ts`):
+compara o valor mais recente com **a observação imediatamente anterior**
+salva no banco — ou seja, N=1, sempre. Isso só é uma regra correta (e não
+um acidente) porque cada linha já representa o período natural da própria
+fonte:
+
+- **Mensal** (Selic, IPCA, CPI, desemprego): a fonte publica uma linha por
+  mês — "a linha anterior" já É "o mês anterior". Comparar com N=1 mês é
+  literalmente como o IPCA é noticiado oficialmente (variação mês a mês).
+- **Diário** (PTAX, Fed Funds Rate, Treasury 10 anos, índice do dólar): o
+  BCB e a maioria das séries do FRED só publicam em dia útil — sem linha
+  nenhuma no fim de semana, então "a linha anterior" já É "o dia útil
+  anterior", sem precisar filtrar nada. **Exceção conferida**: o Fed Funds
+  Rate (FRED, série DFF) é a única que replica o valor em fins de semana
+  (repete sexta no sábado/domingo) — comparar segunda-feira com domingo dá
+  numericamente o mesmo resultado que comparar com sexta, porque o valor
+  replicado é idêntico. Nenhuma interpolação é feita em lugar nenhum — se
+  não há dado, não há linha, e ponto (regra simples, sem inventar valor).
+- **Denominador**: `(atual - anterior) / |anterior|`, com `anterior === 0`
+  tratado como "sem variação calculável" (`changePercent: null`) em vez de
+  divisão por zero.
+- **Data de referência** exibida é sempre a data da observação (`date`),
+  nunca a hora em que o dashboard foi carregado.
+- **Consistência dashboard/detalhe**: hoje a variação % só aparece nos
+  cards do dashboard — o modal de detalhamento ainda não duplica esse
+  número (mostra mínimo/máximo do período, não a variação vs. o ponto
+  anterior). Ficou registrado aqui como próximo passo, não escondido.
+
+**Janela de histórico** (`periodOptionsForFrequency`,
+`apps/web/src/utils/indicatorStats.ts`) muda de acordo com a mesma
+`frequency`, em vez de um período genérico igual pra tudo:
+
+| `frequency` | Opções no gráfico | Por quê                                                                 |
+| ----------- | ------------------ | ------------------------------------------------------------------------ |
+| `daily`     | 30 dias / 12 meses | Resolução diária tem pontos de sobra pras duas janelas.                 |
+| `monthly`   | 12 meses / 5 anos  | "30 dias" mostraria 0 ou 1 ponto num indicador mensal — não serve.      |
+
 #### Sincronização automática: `source` + `IndicatorDataSourceRegistry`
 
 Cada indicador sincronizável guarda `source` (ex.: `"bcb-sgs"`,
@@ -162,16 +205,16 @@ com uma mensagem clara em vez de propagar `NaN`/`Invalid Date` pro banco.
 Cadastra (ou atualiza, se já existir) oito indicadores e sincroniza a série
 completa de cada um via `SyncIndicatorObservations`:
 
-| Indicador                              | `source`   | Fonte                                                                                            |
-| --------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
-| Selic acumulada no mês                 | `bcb-sgs`  | [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes) |
-| IPCA (variação mensal)                 | `bcb-sgs`  | SGS 433 (IBGE, via BCB)                                                                          |
-| Dólar comercial (PTAX venda)           | `bcb-ptax` | Olinda/PTAX (BCB), últimos ~11 anos                                                              |
-| Fed Funds Rate (EUA)                   | `fred`     | FRED, série [DFF](https://fred.stlouisfed.org/series/DFF), últimos ~11 anos                     |
-| CPI americano (variação mensal)        | `fred`     | FRED, série [CPIAUCSL](https://fred.stlouisfed.org/series/CPIAUCSL) (`units=pch`), pares com o IPCA |
-| Treasury 10 anos (EUA)                 | `fred`     | FRED, série [DGS10](https://fred.stlouisfed.org/series/DGS10)                                   |
-| Índice do dólar (trade-weighted, EUA)  | `fred`     | FRED, série [DTWEXBGS](https://fred.stlouisfed.org/series/DTWEXBGS)                             |
-| Taxa de desemprego (EUA)               | `fred`     | FRED, série [UNRATE](https://fred.stlouisfed.org/series/UNRATE)                                 |
+| Indicador                              | `source`   | `frequency` | Fonte                                                                                            |
+| --------------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------------------------------- |
+| Selic acumulada no mês                 | `bcb-sgs`  | `monthly`   | [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes) |
+| IPCA (variação mensal)                 | `bcb-sgs`  | `monthly`   | SGS 433 (IBGE, via BCB)                                                                          |
+| Dólar comercial (PTAX venda)           | `bcb-ptax` | `daily`     | Olinda/PTAX (BCB), últimos ~11 anos                                                              |
+| Fed Funds Rate (EUA)                   | `fred`     | `daily`     | FRED, série [DFF](https://fred.stlouisfed.org/series/DFF), últimos ~11 anos                     |
+| CPI americano (variação mensal)        | `fred`     | `monthly`   | FRED, série [CPIAUCSL](https://fred.stlouisfed.org/series/CPIAUCSL) (`units=pch`), pares com o IPCA |
+| Treasury 10 anos (EUA)                 | `fred`     | `daily`     | FRED, série [DGS10](https://fred.stlouisfed.org/series/DGS10)                                   |
+| Índice do dólar (trade-weighted, EUA)  | `fred`     | `daily`     | FRED, série [DTWEXBGS](https://fred.stlouisfed.org/series/DTWEXBGS)                             |
+| Taxa de desemprego (EUA)               | `fred`     | `monthly`   | FRED, série [UNRATE](https://fred.stlouisfed.org/series/UNRATE)                                 |
 
 Os indicadores do FRED só sincronizam se `FRED_API_KEY` estiver configurada
 — sem ela, `FredIndicatorDataSource` falha só para esses quatro (os do BCB
@@ -469,6 +512,10 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 ```bash
 npm test
 ```
+
+Roda os testes de `apps/api` (Vitest — 10 arquivos, casos de uso, entidades
+e os decorators de cache) e de `apps/web` (Vitest — regra de janela de
+histórico por `frequency` e o fallback de `filterByPeriod`) em sequência.
 
 Os testes de unidade dos casos de uso usam repositórios em memória (ex.:
 `InMemoryIndicatorRepository`) em vez do PostgreSQL, evidenciando o

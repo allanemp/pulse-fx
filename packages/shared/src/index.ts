@@ -17,6 +17,8 @@ export interface IndicatorDTO {
   description?: string;
   source?: string;
   sourceEndpoint?: string;
+  /** Cadência natural de publicação da fonte: "daily" ou "monthly" — sempre presente. */
+  frequency: string;
   isFavorite: boolean;
   createdAt: string;
 }

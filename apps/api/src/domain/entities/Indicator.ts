@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DomainError } from '../errors/DomainError.js';
+import { INDICATOR_FREQUENCIES, type IndicatorFrequency } from './IndicatorFrequency.js';
 
 export interface IndicatorProps {
   id: string;
@@ -8,6 +9,7 @@ export interface IndicatorProps {
   description?: string | undefined;
   source?: string | undefined;
   sourceEndpoint?: string | undefined;
+  frequency: IndicatorFrequency;
   createdAt: Date;
 }
 
@@ -33,6 +35,13 @@ const MAX_NAME_LENGTH = 120;
  * Se um indicador está favoritado NÃO é uma propriedade desta entidade — é
  * um fato sobre outra tabela (`Favorite`), resolvido pela camada de
  * aplicação ao montar o DTO, não pelo próprio indicador.
+ *
+ * `frequency` (ver `IndicatorFrequency`) é obrigatório — todo indicador tem
+ * uma cadência natural de publicação na fonte (diária ou mensal), e essa
+ * cadência é o que justifica a regra de variação % do frontend ("comparar
+ * com a linha anterior" já significa "o período anterior certo" porque a
+ * granularidade das linhas segue a fonte) e as janelas de histórico do
+ * gráfico de detalhamento.
  */
 export class Indicator {
   private constructor(private readonly props: IndicatorProps) {}
@@ -43,6 +52,7 @@ export class Indicator {
     description?: string | undefined;
     source?: string | undefined;
     sourceEndpoint?: string | undefined;
+    frequency: IndicatorFrequency;
   }): Indicator {
     const name = input.name.trim();
     const unit = input.unit?.trim() || undefined;
@@ -66,6 +76,10 @@ export class Indicator {
       );
     }
 
+    if (!Object.values(INDICATOR_FREQUENCIES).includes(input.frequency)) {
+      throw new DomainError(`frequency inválida: "${input.frequency}".`);
+    }
+
     return new Indicator({
       id: randomUUID(),
       name,
@@ -73,6 +87,7 @@ export class Indicator {
       description,
       source,
       sourceEndpoint,
+      frequency: input.frequency,
       createdAt: new Date(),
     });
   }
@@ -104,6 +119,10 @@ export class Indicator {
 
   get sourceEndpoint(): string | undefined {
     return this.props.sourceEndpoint;
+  }
+
+  get frequency(): IndicatorFrequency {
+    return this.props.frequency;
   }
 
   get createdAt(): Date {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SyncIndicatorObservations } from '../../src/application/use-cases/SyncIndicatorObservations.js';
 import { Indicator } from '../../src/domain/entities/Indicator.js';
+import { INDICATOR_FREQUENCIES } from '../../src/domain/entities/IndicatorFrequency.js';
 import { DomainError } from '../../src/domain/errors/DomainError.js';
 import { FakeIndicatorDataSource } from './FakeIndicatorDataSource.js';
 import { FakeIndicatorDataSourceRegistry } from './FakeIndicatorDataSourceRegistry.js';
@@ -24,6 +25,7 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
       name: 'SELIC',
       source: FAKE_SOURCE,
       sourceEndpoint: SOURCE_ENDPOINT,
+      frequency: INDICATOR_FREQUENCIES.MONTHLY,
     });
     await indicatorRepository.save(indicator);
 
@@ -51,6 +53,7 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
       name: 'SELIC',
       source: FAKE_SOURCE,
       sourceEndpoint: SOURCE_ENDPOINT,
+      frequency: INDICATOR_FREQUENCIES.MONTHLY,
     });
     await indicatorRepository.save(indicator);
 
@@ -81,6 +84,7 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
       name: 'SELIC',
       source: 'fonte-desconhecida',
       sourceEndpoint: SOURCE_ENDPOINT,
+      frequency: INDICATOR_FREQUENCIES.MONTHLY,
     });
     await indicatorRepository.save(indicator);
 
@@ -108,7 +112,10 @@ describe('SyncIndicatorObservations (caso de uso)', () => {
   });
 
   it('rejeita quando o indicador não tem source/sourceEndpoint', async () => {
-    const indicator = Indicator.create({ name: 'Indicador manual' });
+    const indicator = Indicator.create({
+      name: 'Indicador manual',
+      frequency: INDICATOR_FREQUENCIES.MONTHLY,
+    });
     await indicatorRepository.save(indicator);
 
     const registry = new FakeIndicatorDataSourceRegistry({});

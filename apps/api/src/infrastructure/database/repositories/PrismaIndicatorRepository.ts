@@ -1,5 +1,6 @@
 import type { Indicator as IndicatorModel, PrismaClient } from '@prisma/client';
 import { Indicator } from '../../../domain/entities/Indicator.js';
+import type { IndicatorFrequency } from '../../../domain/entities/IndicatorFrequency.js';
 import type { IndicatorRepository } from '../../../domain/repositories/IndicatorRepository.js';
 
 export class PrismaIndicatorRepository implements IndicatorRepository {
@@ -33,6 +34,9 @@ export class PrismaIndicatorRepository implements IndicatorRepository {
       description: row.description ?? undefined,
       source: row.source ?? undefined,
       sourceEndpoint: row.sourceEndpoint ?? undefined,
+      // Prisma não conhece a union literal do domínio — a coluna é NOT NULL
+      // e só o seed grava nela, sempre com um valor de INDICATOR_FREQUENCIES.
+      frequency: row.frequency as IndicatorFrequency,
       createdAt: row.createdAt,
     });
   }

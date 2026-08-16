@@ -14,6 +14,7 @@ export function toIndicatorDTO(entity: Indicator, isFavorite: boolean): Indicato
     ...(entity.description ? { description: entity.description } : {}),
     ...(entity.source ? { source: entity.source } : {}),
     ...(entity.sourceEndpoint ? { sourceEndpoint: entity.sourceEndpoint } : {}),
+    frequency: entity.frequency,
     isFavorite,
     createdAt: entity.createdAt.toISOString(),
   };
