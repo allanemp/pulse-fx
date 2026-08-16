@@ -3,7 +3,9 @@ import { env } from '../config/env.js';
 import { logger } from '../logging/logger.js';
 
 /**
- * Conexão Redis compartilhada pela fila e pelo worker do BullMQ.
+ * Conexão Redis única do processo, compartilhada pela fila/worker do BullMQ
+ * e pelo cache (`infrastructure/cache`) — uma só instância, um só lugar
+ * pra fechar no shutdown, em vez de uma conexão por consumidor.
  * `maxRetriesPerRequest: null` é exigido pelo BullMQ — sem isso, comandos
  * bloqueantes usados internamente pela lib podem falhar silenciosamente.
  */

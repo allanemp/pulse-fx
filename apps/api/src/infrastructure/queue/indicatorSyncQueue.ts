@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import { logger } from '../logging/logger.js';
-import { redisConnection } from './redisConnection.js';
+import { redisConnection } from '../redis/redisConnection.js';
 
 export const INDICATOR_SYNC_QUEUE_NAME = 'indicator-sync';
 

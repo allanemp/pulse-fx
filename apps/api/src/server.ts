@@ -3,7 +3,7 @@ import { env } from './infrastructure/config/env.js';
 import { prisma } from './infrastructure/database/prisma/client.js';
 import { logger } from './infrastructure/logging/logger.js';
 import { indicatorSyncQueue } from './infrastructure/queue/indicatorSyncQueue.js';
-import { redisConnection } from './infrastructure/queue/redisConnection.js';
+import { redisConnection } from './infrastructure/redis/redisConnection.js';
 import { scheduleDailyIndicatorSync } from './infrastructure/queue/scheduleDailyIndicatorSync.js';
 
 const app = buildApp();

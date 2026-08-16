@@ -49,6 +49,15 @@ const envSchema = z.object({
    * cadastrado não precisa dela.
    */
   FRED_API_KEY: z.string().optional(),
+  /**
+   * TTL do cache de leitura (Redis) para `GET /api/indicators` e
+   * `GET /api/indicators/{id}/observations` — ver `infrastructure/cache`.
+   * Funciona como uma rede de segurança: a invalidação explícita (nas
+   * escritas) já mantém o cache correto na prática, o TTL só garante que
+   * ele nunca fica desatualizado por muito tempo mesmo se alguma
+   * invalidação falhar.
+   */
+  CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 });
 
 function loadEnv() {

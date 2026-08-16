@@ -269,6 +269,42 @@ Interface em http://localhost:8081. Não sobe com `docker compose up`
 normal (`profiles: ["tools"]`) — só quando pedido explicitamente, pra não
 engordar o setup padrão.
 
+#### Cache de leitura (Redis)
+
+`GET /api/indicators` e `GET /api/indicators/{id}/observations` — os dois
+endpoints mais consultados pelo dashboard (toda carga da tela, todo card,
+todo modal de detalhes) — passam por um cache-aside em Redis antes de bater
+no Postgres, via dois decorators reaproveitáveis em
+`infrastructure/cache/`:
+
+- **`CachedQuery`** / **`CachedQueryWithInput`**: envolvem um caso de uso de
+  leitura (`ListIndicators`, `ListObservations`) — no cache miss, executam
+  o caso de uso real e guardam o resultado (JSON, TTL de
+  `CACHE_TTL_SECONDS`, default 300s); no cache hit, devolvem direto do
+  Redis, sem tocar no banco.
+- **`CacheInvalidatingCommand`**: envolve um caso de uso de escrita
+  (`RegisterIndicator`, `RegisterObservation`, `MarkIndicatorAsFavorite`,
+  `UnmarkIndicatorAsFavorite`, `SyncIndicatorObservations`) — depois que a
+  escrita termina com sucesso, invalida (`SCAN` + `DEL`, nunca `KEYS` —
+  não bloqueia o Redis) só o prefixo de cache que aquela escrita afetou.
+  Favoritar um indicador invalida `indicators:list`; sincronizar um
+  indicador invalida só `observations:{indicatorId}:*` — os demais
+  indicadores em cache não são tocados.
+
+O TTL existe como rede de segurança (ex.: se uma invalidação falhar por
+algum motivo), não como o mecanismo principal de correção — a invalidação
+explícita já mantém o cache correto na prática. Falha do Redis (fora do
+ar, indisponível) nunca derruba a API: `RedisCache` devolve cache miss e
+segue pro banco normalmente, só logando um aviso.
+
+Os dois decorators são genéricos e tipados pelo formato de `execute()`, não
+pela classe concreta do caso de uso — controllers e o worker da fila
+dependem só desse formato (`{ execute(input): Promise<Output> }`), então
+não sabem (nem precisam saber) que existe cache por trás. Só o
+`composition-root.ts` decide o que é cacheado.
+
+Variável de ambiente: `CACHE_TTL_SECONDS` (default `300`).
+
 #### Favoritos
 
 `favorites` marca indicadores como favoritos — sem sistema de usuários no

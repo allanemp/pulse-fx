@@ -1,10 +1,18 @@
 import { PrismaClient } from '@prisma/client';
+import type {
+  SyncIndicatorObservationsInput,
+  SyncIndicatorObservationsResult,
+} from '../src/application/use-cases/SyncIndicatorObservations.js';
 import { SyncIndicatorObservations } from '../src/application/use-cases/SyncIndicatorObservations.js';
 import { INDICATOR_SOURCES } from '../src/domain/gateways/IndicatorSources.js';
+import { CacheInvalidatingCommand } from '../src/infrastructure/cache/CacheInvalidatingCommand.js';
+import { cacheKeys } from '../src/infrastructure/cache/cacheKeys.js';
+import { RedisCache } from '../src/infrastructure/cache/RedisCache.js';
 import { PrismaIndicatorRepository } from '../src/infrastructure/database/repositories/PrismaIndicatorRepository.js';
 import { PrismaObservationRepository } from '../src/infrastructure/database/repositories/PrismaObservationRepository.js';
 import { MapIndicatorDataSourceRegistry } from '../src/infrastructure/gateways/IndicatorDataSourceRegistry.js';
 import { logger } from '../src/infrastructure/logging/logger.js';
+import { redisConnection } from '../src/infrastructure/redis/redisConnection.js';
 
 /**
  * Seed de indicadores a partir de fontes externas — cadastra/atualiza o
@@ -131,9 +139,13 @@ const INDICATORS: IndicatorSeedDefinition[] = [
   },
 ];
 
+interface SyncIndicatorObservationsUseCase {
+  execute(input: SyncIndicatorObservationsInput): Promise<SyncIndicatorObservationsResult>;
+}
+
 async function seedIndicator(
   definition: IndicatorSeedDefinition,
-  syncIndicatorObservations: SyncIndicatorObservations,
+  syncIndicatorObservations: SyncIndicatorObservationsUseCase,
 ): Promise<void> {
   const indicator = await prisma.indicator.upsert({
     where: { name: definition.name },
@@ -163,15 +175,24 @@ async function main(): Promise<void> {
   const indicatorRepository = new PrismaIndicatorRepository(prisma);
   const observationRepository = new PrismaObservationRepository(prisma);
   const dataSourceRegistry = new MapIndicatorDataSourceRegistry();
-  const syncIndicatorObservations = new SyncIndicatorObservations(
-    observationRepository,
-    indicatorRepository,
-    dataSourceRegistry,
+  const cache = new RedisCache(redisConnection);
+
+  // O seed escreve observações por fora da API — sem invalidar o cache
+  // aqui, uma API já rodando (com um Redis persistente entre restarts do
+  // container) continuaria servindo o histórico velho até o TTL expirar.
+  const syncIndicatorObservations = new CacheInvalidatingCommand(
+    new SyncIndicatorObservations(observationRepository, indicatorRepository, dataSourceRegistry),
+    cache,
+    (input: SyncIndicatorObservationsInput) => cacheKeys.observationsPrefix(input.indicatorId),
   );
 
   for (const definition of INDICATORS) {
     await seedIndicator(definition, syncIndicatorObservations);
   }
+
+  // O seed roda uma vez e sai — sem isso, o processo do Node ficaria vivo
+  // esperando a conexão Redis fechar sozinha.
+  await redisConnection.quit();
 }
 
 main()

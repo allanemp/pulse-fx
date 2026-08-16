@@ -1,17 +1,25 @@
 import { Worker, type Job } from 'bullmq';
 import type { ListSyncableIndicatorIds } from '../../application/use-cases/ListSyncableIndicatorIds.js';
-import type { SyncIndicatorObservations } from '../../application/use-cases/SyncIndicatorObservations.js';
+import type {
+  SyncIndicatorObservationsInput,
+  SyncIndicatorObservationsResult,
+} from '../../application/use-cases/SyncIndicatorObservations.js';
 import { logger } from '../logging/logger.js';
 import {
   INDICATOR_SYNC_JOB_NAMES,
   INDICATOR_SYNC_QUEUE_NAME,
   indicatorSyncQueue,
 } from './indicatorSyncQueue.js';
-import { redisConnection } from './redisConnection.js';
+import { redisConnection } from '../redis/redisConnection.js';
+
+/** Ver o comentário equivalente em `IndicatorController.ts`: tipado pelo formato de `execute`, não pela classe concreta. */
+interface SyncIndicatorObservationsUseCase {
+  execute(input: SyncIndicatorObservationsInput): Promise<SyncIndicatorObservationsResult>;
+}
 
 export interface IndicatorSyncWorkerDeps {
   listSyncableIndicatorIds: ListSyncableIndicatorIds;
-  syncIndicatorObservations: SyncIndicatorObservations;
+  syncIndicatorObservations: SyncIndicatorObservationsUseCase;
 }
 
 /**

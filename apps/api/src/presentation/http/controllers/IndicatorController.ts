@@ -1,16 +1,35 @@
+import type { IndicatorDTO } from '@pulse-fx/shared';
 import type { Request, Response } from 'express';
-import type { ListIndicators } from '../../../application/use-cases/ListIndicators.js';
-import type { MarkIndicatorAsFavorite } from '../../../application/use-cases/MarkIndicatorAsFavorite.js';
-import type { RegisterIndicator } from '../../../application/use-cases/RegisterIndicator.js';
-import type { UnmarkIndicatorAsFavorite } from '../../../application/use-cases/UnmarkIndicatorAsFavorite.js';
+import type { MarkIndicatorAsFavoriteInput } from '../../../application/use-cases/MarkIndicatorAsFavorite.js';
+import type { RegisterIndicatorInput } from '../../../application/use-cases/RegisterIndicator.js';
+import type { UnmarkIndicatorAsFavoriteInput } from '../../../application/use-cases/UnmarkIndicatorAsFavorite.js';
 import { createIndicatorSchema, indicatorIdParamSchema } from '../validators/indicator.schema.js';
+
+/**
+ * Dependências tipadas pelo FORMATO de `execute`, não pela classe concreta
+ * do caso de uso — assim tanto o caso de uso puro quanto uma versão
+ * decorada (ex.: `CacheInvalidatingCommand`, ver `composition-root.ts`)
+ * servem aqui sem o controller precisar saber que cache existe.
+ */
+interface RegisterIndicatorUseCase {
+  execute(input: RegisterIndicatorInput): Promise<IndicatorDTO>;
+}
+interface ListIndicatorsUseCase {
+  execute(): Promise<IndicatorDTO[]>;
+}
+interface MarkIndicatorAsFavoriteUseCase {
+  execute(input: MarkIndicatorAsFavoriteInput): Promise<void>;
+}
+interface UnmarkIndicatorAsFavoriteUseCase {
+  execute(input: UnmarkIndicatorAsFavoriteInput): Promise<void>;
+}
 
 export class IndicatorController {
   constructor(
-    private readonly registerIndicator: RegisterIndicator,
-    private readonly listIndicators: ListIndicators,
-    private readonly markIndicatorAsFavorite: MarkIndicatorAsFavorite,
-    private readonly unmarkIndicatorAsFavorite: UnmarkIndicatorAsFavorite,
+    private readonly registerIndicator: RegisterIndicatorUseCase,
+    private readonly listIndicators: ListIndicatorsUseCase,
+    private readonly markIndicatorAsFavorite: MarkIndicatorAsFavoriteUseCase,
+    private readonly unmarkIndicatorAsFavorite: UnmarkIndicatorAsFavoriteUseCase,
   ) {}
 
   create = async (req: Request, res: Response): Promise<void> => {
