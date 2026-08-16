@@ -5,6 +5,7 @@ import type { HistoryPeriod } from '../utils/indicatorStats';
 import { filterByPeriod, periodOptionsForFrequency } from '../utils/indicatorStats';
 import { IndicatorHistoryChart } from './IndicatorHistoryChart';
 import { ObservationsTable } from './ObservationsTable';
+import { Skeleton } from './Skeleton';
 
 interface IndicatorDetailModalProps {
   indicator: IndicatorDTO;
@@ -74,7 +75,22 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
         )}
 
         <div className="overflow-y-auto p-5">
-          {isLoading && <p className="text-sm text-slate-400">Carregando histórico…</p>}
+          {isLoading && (
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-7 w-32 rounded-md" />
+              </div>
+              <Skeleton className="h-60 w-full rounded-lg" />
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Skeleton className="h-16 rounded-lg" />
+                <Skeleton className="h-16 rounded-lg" />
+              </div>
+
+              <Skeleton className="mb-3 mt-6 h-4 w-36" />
+              <Skeleton className="h-40 w-full rounded-lg" />
+            </div>
+          )}
           {isError && <p className="text-sm text-red-400">Erro ao carregar o histórico.</p>}
 
           {observations && (

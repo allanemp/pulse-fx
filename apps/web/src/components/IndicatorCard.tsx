@@ -3,6 +3,7 @@ import type { KeyboardEvent, MouseEvent } from 'react';
 import { useObservations } from '../hooks/useObservations';
 import { useToggleFavorite } from '../hooks/useToggleFavorite';
 import { computeLatestChange } from '../utils/indicatorChange';
+import { Skeleton } from './Skeleton';
 
 interface IndicatorCardProps {
   indicator: IndicatorDTO;
@@ -64,7 +65,15 @@ export function IndicatorCard({ indicator, onOpenDetails }: IndicatorCardProps) 
         {indicator.unit && <p className="text-xs text-slate-400">{indicator.unit}</p>}
       </div>
 
-      {isLoading && <p className="text-sm text-slate-400">Carregando…</p>}
+      {isLoading && (
+        <div className="flex items-end justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+      )}
       {isError && <p className="text-sm text-red-400">Erro ao carregar dados.</p>}
 
       {change && (
