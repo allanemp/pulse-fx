@@ -4,6 +4,7 @@ import type { IndicatorDataSourceRegistry } from '../../domain/gateways/Indicato
 import { INDICATOR_SOURCES } from '../../domain/gateways/IndicatorSources.js';
 import { BcbPtaxIndicatorDataSource } from './BcbPtaxIndicatorDataSource.js';
 import { BcbSgsIndicatorDataSource } from './BcbSgsIndicatorDataSource.js';
+import { FredIndicatorDataSource } from './FredIndicatorDataSource.js';
 
 /**
  * Registro de todas as implementações de `IndicatorDataSource` conhecidas
@@ -15,6 +16,7 @@ export class MapIndicatorDataSourceRegistry implements IndicatorDataSourceRegist
   private readonly sources: Record<string, IndicatorDataSource> = {
     [INDICATOR_SOURCES.BCB_SGS]: new BcbSgsIndicatorDataSource(),
     [INDICATOR_SOURCES.BCB_PTAX]: new BcbPtaxIndicatorDataSource(),
+    [INDICATOR_SOURCES.FRED]: new FredIndicatorDataSource(),
   };
 
   get(source: string): IndicatorDataSource {

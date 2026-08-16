@@ -79,6 +79,8 @@ services:
       # — é o único domínio que o cors() da API aceita.
       CORS_ORIGIN: ${CORS_ORIGIN:?defina CORS_ORIGIN (https://app.seudominio.com) em .env.production}
       API_TOKEN: ${API_TOKEN:?defina API_TOKEN em .env.production}
+      # Opcional: só necessária se algum indicador usar source "fred".
+      FRED_API_KEY: ${FRED_API_KEY:-}
     networks:
       - internal
     # Sem "ports": só alcançável dentro da rede docker, em "api:3333" — quem

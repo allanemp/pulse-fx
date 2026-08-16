@@ -68,6 +68,67 @@ const INDICATORS: IndicatorSeedDefinition[] = [
     // ampliar depois, é só trocar essa data.
     sourceEndpoint: '2015-01-01',
   },
+  {
+    name: 'Fed Funds Rate (EUA)',
+    unit: '% a.a.',
+    description:
+      'Taxa de juros básica dos Estados Unidos (Federal Funds Effective Rate), ' +
+      'definida pelo Federal Reserve — o par direto da Selic: o diferencial ' +
+      'entre as duas é um dos principais motores da cotação USD/BRL. Fonte: ' +
+      'FRED (Federal Reserve Economic Data), série DFF. Publicada diariamente ' +
+      '(dias úteis).',
+    source: INDICATOR_SOURCES.FRED,
+    // Para o FRED, sourceEndpoint é "{series_id}:{data_de_início}" — ver
+    // FredIndicatorDataSource. Mesma janela de 2015 em diante usada no PTAX,
+    // pra comparar Selic x Fed Funds Rate no mesmo período.
+    sourceEndpoint: 'DFF:2015-01-01',
+  },
+  {
+    name: 'CPI americano (variação mensal)',
+    unit: '% a.m.',
+    description:
+      'Consumer Price Index for All Urban Consumers (CPI-U) — o índice oficial ' +
+      'de inflação dos Estados Unidos, o par direto do IPCA. Fonte: FRED, série ' +
+      'CPIAUCSL, já pedida como variação percentual mês a mês (não o índice ' +
+      'bruto) para ficar comparável ao formato do IPCA. Publicado mensalmente.',
+    source: INDICATOR_SOURCES.FRED,
+    // "pch" pede ao próprio FRED a série já transformada em variação % mês a
+    // mês — ver o comentário sobre "units" em FredIndicatorDataSource.
+    sourceEndpoint: 'CPIAUCSL:2015-01-01:pch',
+  },
+  {
+    name: 'Treasury 10 anos (EUA)',
+    unit: '% a.a.',
+    description:
+      'Rendimento (yield) dos títulos do Tesouro americano de 10 anos — uma das ' +
+      'principais referências de taxa de juros de longo prazo do mundo, usada ' +
+      'como benchmark para precificar outros ativos. Fonte: FRED, série DGS10. ' +
+      'Publicada diariamente (dias úteis).',
+    source: INDICATOR_SOURCES.FRED,
+    sourceEndpoint: 'DGS10:2015-01-01',
+  },
+  {
+    name: 'Índice do dólar (trade-weighted, EUA)',
+    unit: 'índice',
+    description:
+      'Nominal Broad U.S. Dollar Index — mede a força do dólar americano frente ' +
+      'a uma cesta ampla de moedas dos principais parceiros comerciais dos EUA ' +
+      '(não só o real); quanto maior, mais forte o dólar globalmente. Fonte: ' +
+      'FRED, série DTWEXBGS. Publicada em dias úteis.',
+    source: INDICATOR_SOURCES.FRED,
+    sourceEndpoint: 'DTWEXBGS:2015-01-01',
+  },
+  {
+    name: 'Taxa de desemprego (EUA)',
+    unit: '%',
+    description:
+      'Taxa de desemprego dos Estados Unidos — um dos principais indicadores de ' +
+      'saúde da economia americana, acompanhado de perto pelo Federal Reserve ' +
+      'nas decisões sobre a taxa de juros (Fed Funds Rate). Fonte: FRED, série ' +
+      'UNRATE. Publicada mensalmente.',
+    source: INDICATOR_SOURCES.FRED,
+    sourceEndpoint: 'UNRATE:2015-01-01',
+  },
 ];
 
 async function seedIndicator(

@@ -169,6 +169,19 @@ campos `cotacaoCompra`/`cotacaoVenda` em vez de `valor`).
   `value` por data; a de compra fica de fora). O domínio (outro serviço do
   BCB, outro host) fica em `BCB_PTAX_API_BASE_URL` — cada fonte com seu
   próprio domínio configurável, nenhum hardcoded no código.
+- `FredIndicatorDataSource`: primeira fonte fora do BCB — FRED (Federal
+  Reserve Economic Data, EUA). Confirma que o registry aguenta uma API de
+  verdade diferente: exige `api_key` por requisição (BCB é aberto,
+  `FRED_API_KEY` no `.env` — gratuita em
+  https://fredaccount.stlouisfed.org/apikeys), e `value` vem como **string**
+  (ex.: `"3.6300000000"`), com `"."` representando dado ausente. Aqui
+  `sourceEndpoint` é `"{series_id}:{data_de_início}[:{units}]"` (ex.:
+  `"DFF:2015-01-01"` ou `"CPIAUCSL:2015-01-01:pch"`) — precisa do
+  `series_id` porque o FRED tem milhares de séries diferentes atrás do
+  mesmo formato, diferente do PTAX (uma série fixa). `units` é o parâmetro
+  de transformação do próprio FRED — usado para pedir o CPI já como
+  variação % mês a mês em vez do índice bruto, comparável ao IPCA, sem
+  reimplementar essa conta aqui.
 - Adicionar uma nova fonte é registrar mais uma entrada no dicionário —
   `SyncIndicatorObservations` e o worker da fila não mudam.
 
@@ -176,16 +189,25 @@ Cada `IndicatorDataSource` valida a forma da resposta com Zod antes de
 interpretar qualquer coisa — se uma fonte externa mudar de formato, falha
 com uma mensagem clara em vez de propagar `NaN`/`Invalid Date` pro banco.
 
-#### Seed: Selic, IPCA e Dólar (PTAX)
+#### Seed: BCB (Selic, IPCA, Dólar) e FRED (EUA)
 
-Cadastra (ou atualiza, se já existir) três indicadores e sincroniza a série
+Cadastra (ou atualiza, se já existir) oito indicadores e sincroniza a série
 completa de cada um via `SyncIndicatorObservations`:
 
-| Indicador                    | `source`   | Fonte                                                                                           |
-| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------- |
-| Selic acumulada no mês       | `bcb-sgs`  | [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes) |
-| IPCA (variação mensal)       | `bcb-sgs`  | SGS 433 (IBGE, via BCB)                                                                         |
-| Dólar comercial (PTAX venda) | `bcb-ptax` | Olinda/PTAX (BCB), últimos ~11 anos                                                             |
+| Indicador                              | `source`   | Fonte                                                                                            |
+| --------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| Selic acumulada no mês                 | `bcb-sgs`  | [SGS 4390](https://dadosabertos.bcb.gov.br/dataset/4390-taxa-de-juros---selic-acumulada-no-mes) |
+| IPCA (variação mensal)                 | `bcb-sgs`  | SGS 433 (IBGE, via BCB)                                                                          |
+| Dólar comercial (PTAX venda)           | `bcb-ptax` | Olinda/PTAX (BCB), últimos ~11 anos                                                              |
+| Fed Funds Rate (EUA)                   | `fred`     | FRED, série [DFF](https://fred.stlouisfed.org/series/DFF), últimos ~11 anos                     |
+| CPI americano (variação mensal)        | `fred`     | FRED, série [CPIAUCSL](https://fred.stlouisfed.org/series/CPIAUCSL) (`units=pch`), pares com o IPCA |
+| Treasury 10 anos (EUA)                 | `fred`     | FRED, série [DGS10](https://fred.stlouisfed.org/series/DGS10)                                   |
+| Índice do dólar (trade-weighted, EUA)  | `fred`     | FRED, série [DTWEXBGS](https://fred.stlouisfed.org/series/DTWEXBGS)                             |
+| Taxa de desemprego (EUA)               | `fred`     | FRED, série [UNRATE](https://fred.stlouisfed.org/series/UNRATE)                                 |
+
+Os indicadores do FRED só sincronizam se `FRED_API_KEY` estiver configurada
+— sem ela, `FredIndicatorDataSource` falha só para esses quatro (os do BCB
+seguem normalmente).
 
 Upsert por `(indicatorId, date)` — rodar de novo não duplica nem falha.
 Script em `apps/api/prisma/seed.ts`.

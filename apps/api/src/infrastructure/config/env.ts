@@ -35,6 +35,20 @@ const envSchema = z.object({
     .default('https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata'),
   /** Conexão do Redis usada pela fila BullMQ de sincronização de indicadores. */
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  /**
+   * Domínio base da API do FRED (Federal Reserve Economic Data, EUA), usado
+   * por `FredIndicatorDataSource`. Diferente do BCB, o FRED exige uma
+   * `api_key` por requisição (ver `FRED_API_KEY`) — não é uma API aberta.
+   */
+  FRED_API_BASE_URL: z.string().url().default('https://api.stlouisfed.org/fred'),
+  /**
+   * Chave da API do FRED (gratuita, uma por conta — https://fredaccount.stlouisfed.org/apikeys).
+   * Opcional na config global: só é exigida em tempo de execução se algum
+   * indicador estiver cadastrado com `source: "fred"` (ver
+   * `FredIndicatorDataSource`) — um deploy sem nenhum indicador do FRED
+   * cadastrado não precisa dela.
+   */
+  FRED_API_KEY: z.string().optional(),
 });
 
 function loadEnv() {

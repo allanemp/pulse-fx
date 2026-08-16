@@ -8,6 +8,8 @@ export const INDICATOR_SOURCES = {
   BCB_SGS: 'bcb-sgs',
   /** PTAX (câmbio) do Banco Central — API e formato diferentes do SGS. */
   BCB_PTAX: 'bcb-ptax',
+  /** FRED (Federal Reserve Economic Data), EUA — exige API key, formato próprio. */
+  FRED: 'fred',
 } as const;
 
 export type IndicatorSource = (typeof INDICATOR_SOURCES)[keyof typeof INDICATOR_SOURCES];
