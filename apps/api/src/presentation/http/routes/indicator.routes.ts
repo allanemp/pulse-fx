@@ -10,7 +10,6 @@ export function indicatorRoutes(
 ): Router {
   const router = Router();
 
-  router.post('/', asyncHandler(indicatorController.create));
   router.get('/', asyncHandler(indicatorController.list));
   router.put('/:indicatorId/favorite', asyncHandler(indicatorController.markFavorite));
   router.delete('/:indicatorId/favorite', asyncHandler(indicatorController.unmarkFavorite));

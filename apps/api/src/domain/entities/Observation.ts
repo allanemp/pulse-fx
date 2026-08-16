@@ -13,9 +13,8 @@ export interface ObservationProps {
  * Entidade de domínio que representa o valor de um indicador observado em
  * uma data específica (um ponto de uma série temporal).
  *
- * Diferente de `ExchangeRate.rate`, `value` não é restrito a números
- * positivos: indicadores econômicos legitimamente assumem valores negativos
- * (ex.: variação do PIB).
+ * `value` não é restrito a números positivos: indicadores econômicos
+ * legitimamente assumem valores negativos (ex.: variação do PIB).
  */
 export class Observation {
   private constructor(private readonly props: ObservationProps) {}

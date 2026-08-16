@@ -2,7 +2,7 @@
   "name": "@pulse-fx/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Pulse FX Web — dashboard de cotações de câmbio (React + TypeScript).",
+  "description": "Pulse FX Web — dashboard de indicadores econômicos (React + TypeScript).",
   "type": "module",
   "scripts": {
     "dev": "vite",

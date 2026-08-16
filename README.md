@@ -1,8 +1,9 @@
 # Pulse FX
 
-Monorepo de referência para monitoramento de cotações de câmbio, construído como
-código de produção (não uma prova de conceito): frontend React, API Node.js em
-arquitetura em camadas, PostgreSQL e execução via Docker Compose.
+Monorepo de referência para monitoramento de indicadores econômicos e câmbio,
+construído como código de produção (não uma prova de conceito): frontend
+React, API Node.js em arquitetura em camadas, PostgreSQL e execução via
+Docker Compose.
 
 ## Stack
 
@@ -48,13 +49,14 @@ O backend segue **Clean Architecture / arquitetura em camadas**, aplicando
 princípios SOLID:
 
 - **`domain`** não depende de nenhuma outra camada. Contém as regras de
-  negócio puras (ex.: uma cotação não pode ter valor ≤ 0) e as _interfaces_
-  (portas) que a aplicação usa para persistência — ex.: `ExchangeRateRepository`.
-- **`application`** contém os casos de uso (`RegisterExchangeRate`,
-  `ListExchangeRates`, `GetLatestExchangeRate`). Cada caso de uso recebe suas
-  dependências por injeção de construtor e depende apenas de abstrações do
-  domínio (Dependency Inversion Principle) — por isso são testáveis sem banco
-  de dados (veja `apps/api/test/unit`).
+  negócio puras (ex.: `source` e `sourceEndpoint` de um indicador só podem
+  vir juntos, nunca um sem o outro) e as _interfaces_ (portas) que a
+  aplicação usa para persistência — ex.: `IndicatorRepository`.
+- **`application`** contém os casos de uso (`ListIndicators`,
+  `ListObservations`, `SyncIndicatorObservations`, `MarkIndicatorAsFavorite`).
+  Cada caso de uso recebe suas dependências por injeção de construtor e
+  depende apenas de abstrações do domínio (Dependency Inversion Principle) —
+  por isso são testáveis sem banco de dados (veja `apps/api/test/unit`).
 - **`infrastructure`** contém as implementações concretas: o repositório
   Prisma/PostgreSQL, configuração de ambiente validada com Zod e o logger.
   É a única camada que conhece Prisma.
@@ -68,74 +70,40 @@ princípios SOLID:
 No frontend, a comunicação com a API passa por **hooks + TanStack Query**
 em vez de `useState`/`useEffect` manuais:
 
-- **`api/exchangeRatesApi.ts`** contém só as funções de acesso HTTP puras.
-- **`hooks/useExchangeRates.ts`** e **`hooks/useCreateExchangeRate.ts`** envolvem
-  essas funções em `useQuery`/`useMutation`, cada um responsável por um único
-  caso de uso da tela.
+- **`api/indicatorsApi.ts`** contém só as funções de acesso HTTP puras.
+- **`hooks/useIndicators.ts`**, **`hooks/useObservations.ts`** e
+  **`hooks/useToggleFavorite.ts`** envolvem essas funções em
+  `useQuery`/`useMutation`, cada um responsável por um único caso de uso da
+  tela.
 - O cache de leitura é compartilhado automaticamente entre componentes (sem
-  refetch redundante) e a listagem se atualiza sozinha após um `POST` bem-sucedido
-  via `queryClient.invalidateQueries`, sem gerenciar `loading`/`error` à mão.
+  refetch redundante) e favoritar/desfavoritar atualiza a lista sozinha via
+  `queryClient.invalidateQueries` (com atualização otimista — ver
+  `useToggleFavorite.ts`), sem gerenciar `loading`/`error` à mão.
 - `app/queryClient.ts` centraliza a configuração do cache (`staleTime`, retries).
   Em desenvolvimento, o React Query Devtools fica disponível na tela (removido
   do bundle de produção por tree-shaking).
 
-## Domínio de exemplo
-
-Para servir como esqueleto funcional e não apenas uma casca vazia, a API
-expõe um domínio simples de **cotações de câmbio**.
-
-**Só existe na API — sem UI no frontend.** O usuário final não cadastra nem
-edita dados na mão em nenhum domínio deste projeto; tudo chega via
-integração com fontes externas, como o seed do BCB descrito mais abaixo. A
-rota `POST /api/exchange-rates` fica disponível para uma futura integração
-automática seguir o mesmo padrão.
-
-| Método | Rota                                                            | Descrição                                |
-| ------ | --------------------------------------------------------------- | ---------------------------------------- |
-| POST   | `/api/exchange-rates`                                           | Registra uma nova cotação                |
-| GET    | `/api/exchange-rates`                                           | Lista cotações (filtro opcional por par) |
-| GET    | `/api/exchange-rates/latest?baseCurrency=USD&quoteCurrency=BRL` | Retorna a cotação mais recente de um par |
-| GET    | `/health`                                                       | Health check                             |
-
-Exemplo de corpo do `POST`:
-
-```json
-{
-  "baseCurrency": "USD",
-  "quoteCurrency": "BRL",
-  "rate": 5.42
-}
-```
-
 ### Indicadores
 
-Um segundo domínio, em camadas completas (domain → application →
-infrastructure → presentation), como o de cotações: `indicators` é o
-catálogo (ex.: SELIC, IPCA) e `observations` é a série temporal de valores
-de cada indicador, um por data (`@@unique([indicatorId, date])` no Prisma).
+`indicators` é o catálogo (ex.: Selic, IPCA, Fed Funds Rate) e `observations`
+é a série temporal de valores de cada indicador, um por data
+(`@@unique([indicatorId, date])` no Prisma).
+
+Não há endpoint de escrita manual — o usuário final não cadastra nem edita
+dados na mão em nenhum domínio deste projeto; tudo chega via sincronização
+automática com as fontes externas (BCB, FRED — ver seed e sincronização
+diária mais abaixo). A API expõe só o necessário para o dashboard:
 
 | Método | Rota                                                   | Descrição                                           |
 | ------ | ------------------------------------------------------ | --------------------------------------------------- |
-| POST   | `/api/indicators`                                      | Cadastra um novo indicador                          |
 | GET    | `/api/indicators`                                      | Lista os indicadores cadastrados (com `isFavorite`) |
 | PUT    | `/api/indicators/{indicatorId}/favorite`               | Marca o indicador como favorito (idempotente)       |
 | DELETE | `/api/indicators/{indicatorId}/favorite`               | Desmarca o indicador como favorito (idempotente)    |
-| POST   | `/api/indicators/{indicatorId}/observations`           | Registra uma observação (data + valor)              |
 | GET    | `/api/indicators/{indicatorId}/observations?from=&to=` | Lista a série temporal (filtro opcional por data)   |
-| GET    | `/api/indicators/{indicatorId}/observations/latest`    | Observação mais recente do indicador                |
+| GET    | `/health`                                              | Health check                                        |
 
-Exemplo de corpo do `POST /api/indicators/{indicatorId}/observations`:
-
-```json
-{
-  "date": "2026-08-14",
-  "value": 10.75
-}
-```
-
-Ao contrário de `ExchangeRate.rate`, `Observation.value` aceita números
-negativos — indicadores econômicos legitimamente assumem valores negativos
-(ex.: variação do PIB).
+`Observation.value` aceita números negativos — indicadores econômicos
+legitimamente assumem valores negativos (ex.: variação do PIB).
 
 #### Sincronização automática: `source` + `IndicatorDataSourceRegistry`
 
@@ -283,8 +251,8 @@ no Postgres, via dois decorators reaproveitáveis em
   `CACHE_TTL_SECONDS`, default 300s); no cache hit, devolvem direto do
   Redis, sem tocar no banco.
 - **`CacheInvalidatingCommand`**: envolve um caso de uso de escrita
-  (`RegisterIndicator`, `RegisterObservation`, `MarkIndicatorAsFavorite`,
-  `UnmarkIndicatorAsFavorite`, `SyncIndicatorObservations`) — depois que a
+  (`MarkIndicatorAsFavorite`, `UnmarkIndicatorAsFavorite`,
+  `SyncIndicatorObservations`) — depois que a
   escrita termina com sucesso, invalida (`SCAN` + `DEL`, nunca `KEYS` —
   não bloqueia o Redis) só o prefixo de cache que aquela escrita afetou.
   Favoritar um indicador invalida `indicators:list`; sincronizar um
@@ -502,8 +470,8 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 npm test
 ```
 
-Os testes de unidade dos casos de uso usam um repositório em memória
-(`InMemoryExchangeRateRepository`) em vez do PostgreSQL, evidenciando o
+Os testes de unidade dos casos de uso usam repositórios em memória (ex.:
+`InMemoryIndicatorRepository`) em vez do PostgreSQL, evidenciando o
 desacoplamento entre `application` e `infrastructure`.
 
 ## Convenções

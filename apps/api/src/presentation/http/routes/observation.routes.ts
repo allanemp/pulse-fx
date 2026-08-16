@@ -9,9 +9,7 @@ import { asyncHandler } from '../middlewares/asyncHandler.js';
 export function observationRoutes(controller: ObservationController): Router {
   const router = Router({ mergeParams: true });
 
-  router.post('/', asyncHandler(controller.create));
   router.get('/', asyncHandler(controller.list));
-  router.get('/latest', asyncHandler(controller.latest));
 
   return router;
 }

@@ -1,48 +1,13 @@
-import { Prisma } from '@prisma/client';
 import type { Observation as ObservationModel, PrismaClient } from '@prisma/client';
 import { Observation } from '../../../domain/entities/Observation.js';
-import { DomainError } from '../../../domain/errors/DomainError.js';
 import type {
   ObservationFilter,
   ObservationRepository,
 } from '../../../domain/repositories/ObservationRepository.js';
 
-const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
-
-/**
- * Implementação do repositório de observações usando Prisma + PostgreSQL.
- *
- * Traduz a violação da constraint `@@unique([indicatorId, date])` (erro de
- * infraestrutura) em `DomainError` — a única checagem de duplicidade que só
- * pode ser garantida de forma segura pelo banco (condição de corrida entre
- * requisições concorrentes), então a infraestrutura é quem sabe reconhecê-la
- * e traduzi-la para uma linguagem que a camada de apresentação entende.
- */
+/** Implementação do repositório de observações usando Prisma + PostgreSQL. */
 export class PrismaObservationRepository implements ObservationRepository {
   constructor(private readonly prisma: PrismaClient) {}
-
-  async save(observation: Observation): Promise<void> {
-    try {
-      await this.prisma.observation.create({
-        data: {
-          id: observation.id,
-          indicatorId: observation.indicatorId,
-          date: observation.date,
-          value: observation.value,
-          createdAt: observation.createdAt,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === UNIQUE_CONSTRAINT_VIOLATION
-      ) {
-        throw new DomainError('Já existe uma observação deste indicador nesta data.');
-      }
-
-      throw error;
-    }
-  }
 
   async upsert(observation: Observation): Promise<void> {
     await this.prisma.observation.upsert({
@@ -77,15 +42,6 @@ export class PrismaObservationRepository implements ObservationRepository {
     });
 
     return rows.map((row) => this.toDomain(row));
-  }
-
-  async findLatestByIndicatorId(indicatorId: string): Promise<Observation | null> {
-    const row = await this.prisma.observation.findFirst({
-      where: { indicatorId },
-      orderBy: { date: 'desc' },
-    });
-
-    return row ? this.toDomain(row) : null;
   }
 
   private toDomain(row: ObservationModel): Observation {

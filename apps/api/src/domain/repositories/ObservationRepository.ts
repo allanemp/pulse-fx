@@ -12,8 +12,6 @@ export interface ObservationFilter {
  * `src/infrastructure/database/repositories/PrismaObservationRepository.ts`.
  */
 export interface ObservationRepository {
-  /** Cria uma observação nova; rejeita duplicata de `(indicatorId, date)` — usado pela API pública. */
-  save(observation: Observation): Promise<void>;
   /**
    * Cria ou atualiza por `(indicatorId, date)` sem erro em caso de duplicata
    * — usado pela sincronização automática (seed/worker da fila), que
@@ -22,5 +20,4 @@ export interface ObservationRepository {
    */
   upsert(observation: Observation): Promise<void>;
   findMany(filter?: ObservationFilter): Promise<Observation[]>;
-  findLatestByIndicatorId(indicatorId: string): Promise<Observation | null>;
 }

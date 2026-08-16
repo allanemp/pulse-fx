@@ -2,7 +2,7 @@
   "name": "@pulse-fx/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Pulse FX API — serviço de cotações de câmbio (Node.js + TypeScript, arquitetura em camadas).",
+  "description": "Pulse FX API — serviço de indicadores econômicos (Node.js + TypeScript, arquitetura em camadas).",
   "type": "module",
   "main": "dist/src/server.js",
   "scripts": {

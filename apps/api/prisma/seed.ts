@@ -16,9 +16,9 @@ import { redisConnection } from '../src/infrastructure/redis/redisConnection.js'
 
 /**
  * Seed de indicadores a partir de fontes externas — cadastra/atualiza o
- * indicador (upsert direto no Prisma, não via `RegisterIndicator`: esse
- * caso de uso rejeita nome duplicado, o comportamento certo para a API,
- * errado para reprocessar este script com segurança) e delega a busca das
+ * indicador com upsert direto no Prisma (idempotente: rodar de novo não
+ * falha nem duplica, ao contrário de uma checagem de nome único pensada
+ * para rejeitar duplicata numa API pública) e delega a busca das
  * observações para `SyncIndicatorObservations` — o mesmo caso de uso usado
  * pelo worker da fila de sincronização diária (ver
  * `src/infrastructure/queue`), para não duplicar a lógica de "como buscar

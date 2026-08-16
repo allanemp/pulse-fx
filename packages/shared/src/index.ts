@@ -5,21 +5,6 @@
  * evitando divergência entre o tipo usado no backend e o consumido no frontend.
  */
 
-export interface ExchangeRateDTO {
-  id: string;
-  baseCurrency: string;
-  quoteCurrency: string;
-  rate: number;
-  capturedAt: string;
-}
-
-export interface CreateExchangeRateInput {
-  baseCurrency: string;
-  quoteCurrency: string;
-  rate: number;
-  capturedAt?: string;
-}
-
 export interface ApiErrorResponse {
   message: string;
   details?: Record<string, string[]>;
@@ -36,23 +21,10 @@ export interface IndicatorDTO {
   createdAt: string;
 }
 
-export interface CreateIndicatorInput {
-  name: string;
-  unit?: string;
-  description?: string;
-  source?: string;
-  sourceEndpoint?: string;
-}
-
 export interface ObservationDTO {
   id: string;
   indicatorId: string;
   date: string;
   value: number;
   createdAt: string;
-}
-
-export interface CreateObservationInput {
-  date: string;
-  value: number;
 }

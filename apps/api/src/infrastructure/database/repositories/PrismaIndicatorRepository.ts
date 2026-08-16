@@ -5,28 +5,8 @@ import type { IndicatorRepository } from '../../../domain/repositories/Indicator
 export class PrismaIndicatorRepository implements IndicatorRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async save(indicator: Indicator): Promise<void> {
-    await this.prisma.indicator.create({
-      data: {
-        id: indicator.id,
-        name: indicator.name,
-        unit: indicator.unit ?? null,
-        description: indicator.description ?? null,
-        source: indicator.source ?? null,
-        sourceEndpoint: indicator.sourceEndpoint ?? null,
-        createdAt: indicator.createdAt,
-      },
-    });
-  }
-
   async findById(id: string): Promise<Indicator | null> {
     const row = await this.prisma.indicator.findUnique({ where: { id } });
-
-    return row ? this.toDomain(row) : null;
-  }
-
-  async findByName(name: string): Promise<Indicator | null> {
-    const row = await this.prisma.indicator.findUnique({ where: { name } });
 
     return row ? this.toDomain(row) : null;
   }

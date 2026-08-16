@@ -6,45 +6,6 @@
  * o formato dos schemas fique visível e revisável em um só lugar.
  */
 
-const exchangeRateSchema = {
-  type: 'object',
-  properties: {
-    id: { type: 'string', format: 'uuid', example: '729f8b62-70f6-480e-9758-c314d429d168' },
-    baseCurrency: { type: 'string', minLength: 3, maxLength: 3, example: 'USD' },
-    quoteCurrency: { type: 'string', minLength: 3, maxLength: 3, example: 'BRL' },
-    rate: { type: 'number', format: 'double', example: 5.42 },
-    capturedAt: { type: 'string', format: 'date-time' },
-  },
-  required: ['id', 'baseCurrency', 'quoteCurrency', 'rate', 'capturedAt'],
-};
-
-const createExchangeRateInputSchema = {
-  type: 'object',
-  properties: {
-    baseCurrency: {
-      type: 'string',
-      minLength: 3,
-      maxLength: 3,
-      description: 'Código ISO 4217 da moeda base.',
-      example: 'USD',
-    },
-    quoteCurrency: {
-      type: 'string',
-      minLength: 3,
-      maxLength: 3,
-      description: 'Código ISO 4217 da moeda de cotação.',
-      example: 'BRL',
-    },
-    rate: { type: 'number', format: 'double', minimum: 0, exclusiveMinimum: true, example: 5.42 },
-    capturedAt: {
-      type: 'string',
-      format: 'date-time',
-      description: 'Instante em que a cotação foi observada. Padrão: agora.',
-    },
-  },
-  required: ['baseCurrency', 'quoteCurrency', 'rate'],
-};
-
 const apiErrorResponseSchema = {
   type: 'object',
   properties: {
@@ -78,14 +39,6 @@ const unauthorizedResponse = {
   content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiErrorResponse' } } },
 };
 
-const currencyQueryParam = (name: string, required: boolean) => ({
-  name,
-  in: 'query',
-  required,
-  schema: { type: 'string', minLength: 3, maxLength: 3 },
-  example: name === 'baseCurrency' ? 'USD' : 'BRL',
-});
-
 const indicatorSchema = {
   type: 'object',
   properties: {
@@ -104,7 +57,7 @@ const indicatorSchema = {
     },
     source: {
       type: 'string',
-      enum: ['bcb-sgs', 'bcb-ptax'],
+      enum: ['bcb-sgs', 'bcb-ptax', 'fred'],
       description:
         'Qual IndicatorDataSource sabe sincronizar este indicador. Sempre presente junto com sourceEndpoint, ou ausente junto.',
       example: 'bcb-sgs',
@@ -112,30 +65,13 @@ const indicatorSchema = {
     sourceEndpoint: {
       type: 'string',
       description:
-        'Como localizar a série na fonte identificada por "source" — o significado varia por fonte (URL para o SGS, data de início para o PTAX). Ausente para indicadores sem sincronização automática.',
+        'Como localizar a série na fonte identificada por "source" — o significado varia por fonte (URL para o SGS, data de início para o PTAX, "series_id:data" para o FRED). Ausente para indicadores sem sincronização automática.',
       example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
     },
     isFavorite: { type: 'boolean', example: false },
     createdAt: { type: 'string', format: 'date-time' },
   },
   required: ['id', 'name', 'isFavorite', 'createdAt'],
-};
-
-const createIndicatorInputSchema = {
-  type: 'object',
-  properties: {
-    name: { type: 'string', minLength: 1, maxLength: 120, example: 'Selic acumulada no mês' },
-    unit: { type: 'string', minLength: 1, maxLength: 40, example: '% a.a.' },
-    description: { type: 'string', minLength: 1, maxLength: 2000 },
-    source: { type: 'string', enum: ['bcb-sgs', 'bcb-ptax'], example: 'bcb-sgs' },
-    sourceEndpoint: {
-      type: 'string',
-      minLength: 1,
-      maxLength: 300,
-      example: '/dados/serie/bcdata.sgs.4390/dados?formato=json',
-    },
-  },
-  required: ['name'],
 };
 
 const observationSchema = {
@@ -148,15 +84,6 @@ const observationSchema = {
     createdAt: { type: 'string', format: 'date-time' },
   },
   required: ['id', 'indicatorId', 'date', 'value', 'createdAt'],
-};
-
-const createObservationInputSchema = {
-  type: 'object',
-  properties: {
-    date: { type: 'string', format: 'date', example: '2026-08-14' },
-    value: { type: 'number', format: 'double', example: 10.75 },
-  },
-  required: ['date', 'value'],
 };
 
 const indicatorIdPathParam = {
@@ -172,14 +99,13 @@ export const openApiSpec = {
     title: 'Pulse FX API',
     version: '0.1.0',
     description:
-      'API de monitoramento de cotações de câmbio do Pulse FX. Arquitetura em camadas ' +
+      'API de monitoramento de indicadores econômicos do Pulse FX. Arquitetura em camadas ' +
       '(domain / application / infrastructure / presentation) — este documento cobre apenas ' +
       'o contrato HTTP exposto pela camada de apresentação.',
   },
   servers: [{ url: '/', description: 'Servidor atual' }],
   security: [{ bearerAuth: [] }],
   tags: [
-    { name: 'Exchange Rates', description: 'Cotações de câmbio' },
     {
       name: 'Indicators',
       description: 'Catálogo de indicadores e suas observações (série temporal)',
@@ -207,74 +133,6 @@ export const openApiSpec = {
         },
       },
     },
-    '/api/exchange-rates': {
-      get: {
-        tags: ['Exchange Rates'],
-        summary: 'Lista cotações registradas',
-        description:
-          'Retorna as cotações mais recentes primeiro. Filtro opcional por par de moedas.',
-        parameters: [
-          currencyQueryParam('baseCurrency', false),
-          currencyQueryParam('quoteCurrency', false),
-        ],
-        responses: {
-          '200': {
-            description: 'Lista de cotações.',
-            content: {
-              'application/json': {
-                schema: { type: 'array', items: { $ref: '#/components/schemas/ExchangeRate' } },
-              },
-            },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-        },
-      },
-      post: {
-        tags: ['Exchange Rates'],
-        summary: 'Registra uma nova cotação',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: { $ref: '#/components/schemas/CreateExchangeRateInput' },
-            },
-          },
-        },
-        responses: {
-          '201': {
-            description: 'Cotação registrada com sucesso.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ExchangeRate' } },
-            },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-          '422': domainErrorResponse,
-        },
-      },
-    },
-    '/api/exchange-rates/latest': {
-      get: {
-        tags: ['Exchange Rates'],
-        summary: 'Cotação mais recente de um par de moedas',
-        parameters: [
-          currencyQueryParam('baseCurrency', true),
-          currencyQueryParam('quoteCurrency', true),
-        ],
-        responses: {
-          '200': {
-            description: 'Cotação mais recente encontrada.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/ExchangeRate' } },
-            },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-          '422': notFoundResponse,
-        },
-      },
-    },
     '/api/indicators': {
       get: {
         tags: ['Indicators'],
@@ -289,25 +147,6 @@ export const openApiSpec = {
             },
           },
           '401': unauthorizedResponse,
-        },
-      },
-      post: {
-        tags: ['Indicators'],
-        summary: 'Cadastra um novo indicador',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': { schema: { $ref: '#/components/schemas/CreateIndicatorInput' } },
-          },
-        },
-        responses: {
-          '201': {
-            description: 'Indicador cadastrado com sucesso.',
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/Indicator' } } },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-          '422': domainErrorResponse,
         },
       },
     },
@@ -362,56 +201,12 @@ export const openApiSpec = {
           '422': notFoundResponse,
         },
       },
-      post: {
-        tags: ['Indicators'],
-        summary: 'Registra uma observação (valor em uma data) para o indicador',
-        parameters: [indicatorIdPathParam],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': { schema: { $ref: '#/components/schemas/CreateObservationInput' } },
-          },
-        },
-        responses: {
-          '201': {
-            description: 'Observação registrada com sucesso.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/Observation' } },
-            },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-          '422': domainErrorResponse,
-        },
-      },
-    },
-    '/api/indicators/{indicatorId}/observations/latest': {
-      get: {
-        tags: ['Indicators'],
-        summary: 'Observação mais recente de um indicador',
-        parameters: [indicatorIdPathParam],
-        responses: {
-          '200': {
-            description: 'Observação mais recente encontrada.',
-            content: {
-              'application/json': { schema: { $ref: '#/components/schemas/Observation' } },
-            },
-          },
-          '401': unauthorizedResponse,
-          '400': badRequestResponse,
-          '422': notFoundResponse,
-        },
-      },
     },
   },
   components: {
     schemas: {
-      ExchangeRate: exchangeRateSchema,
-      CreateExchangeRateInput: createExchangeRateInputSchema,
       Indicator: indicatorSchema,
-      CreateIndicatorInput: createIndicatorInputSchema,
       Observation: observationSchema,
-      CreateObservationInput: createObservationInputSchema,
       ApiErrorResponse: apiErrorResponseSchema,
     },
     securitySchemes: {

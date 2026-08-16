@@ -8,20 +8,6 @@ import type {
 export class InMemoryObservationRepository implements ObservationRepository {
   public readonly items: Observation[] = [];
 
-  async save(observation: Observation): Promise<void> {
-    const duplicate = this.items.some(
-      (item) =>
-        item.indicatorId === observation.indicatorId &&
-        item.date.getTime() === observation.date.getTime(),
-    );
-
-    if (duplicate) {
-      throw new Error('Duplicate (indicatorId, date) — simula a constraint única do banco.');
-    }
-
-    this.items.push(observation);
-  }
-
   async upsert(observation: Observation): Promise<void> {
     const index = this.items.findIndex(
       (item) =>
@@ -43,13 +29,5 @@ export class InMemoryObservationRepository implements ObservationRepository {
       if (filter?.to && item.date.getTime() > filter.to.getTime()) return false;
       return true;
     });
-  }
-
-  async findLatestByIndicatorId(indicatorId: string): Promise<Observation | null> {
-    const matches = this.items
-      .filter((item) => item.indicatorId === indicatorId)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-
-    return matches[0] ?? null;
   }
 }

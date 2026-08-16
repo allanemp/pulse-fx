@@ -1,15 +1,15 @@
 import type { Cache } from './Cache.js';
 
 /**
- * Decorator para um caso de uso de escrita (ex.: `RegisterObservation`,
- * `MarkIndicatorAsFavorite`) — executa o comando real e, só se ele
+ * Decorator para um caso de uso de escrita (ex.: `MarkIndicatorAsFavorite`,
+ * `SyncIndicatorObservations`) — executa o comando real e, só se ele
  * terminar sem lançar erro, invalida (`delByPrefix`) o cache que a escrita
  * tornou desatualizado. Se o comando falhar, nada é invalidado (o estado
  * anterior, ainda em cache, continua válido).
  *
  * `invalidationPrefixFn` deriva o prefixo a invalidar a partir do próprio
- * input do comando — ex.: registrar uma observação de um indicador invalida
- * só o cache DAQUELE indicador, não a lista inteira.
+ * input do comando — ex.: sincronizar as observações de um indicador
+ * invalida só o cache DAQUELE indicador, não a lista inteira.
  */
 export class CacheInvalidatingCommand<TInput, TOutput> {
   constructor(

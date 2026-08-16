@@ -8,9 +8,6 @@ import { httpClient } from './httpClient';
 export const indicatorsApi = {
   list: (): Promise<IndicatorDTO[]> => httpClient.get<IndicatorDTO[]>('/api/indicators'),
 
-  latestObservation: (indicatorId: string): Promise<ObservationDTO> =>
-    httpClient.get<ObservationDTO>(`/api/indicators/${indicatorId}/observations/latest`),
-
   observations: (indicatorId: string): Promise<ObservationDTO[]> =>
     httpClient.get<ObservationDTO[]>(`/api/indicators/${indicatorId}/observations`),
 

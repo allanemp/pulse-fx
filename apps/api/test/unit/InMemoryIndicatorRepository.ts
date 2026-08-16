@@ -5,16 +5,17 @@ import type { IndicatorRepository } from '../../src/domain/repositories/Indicato
 export class InMemoryIndicatorRepository implements IndicatorRepository {
   public readonly items: Indicator[] = [];
 
+  /**
+   * Não faz parte de `IndicatorRepository` (produção não grava indicador
+   * por essa interface — ver `prisma/seed.ts`) — só um jeito conveniente de
+   * popular o fake nos testes, no lugar de mexer em `items` direto.
+   */
   async save(indicator: Indicator): Promise<void> {
     this.items.push(indicator);
   }
 
   async findById(id: string): Promise<Indicator | null> {
     return this.items.find((item) => item.id === id) ?? null;
-  }
-
-  async findByName(name: string): Promise<Indicator | null> {
-    return this.items.find((item) => item.name === name) ?? null;
   }
 
   async findMany(): Promise<Indicator[]> {
