@@ -1,9 +1,11 @@
 import type { IndicatorDTO } from '@pulse-fx/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { useObservations } from '../hooks/useObservations';
+import { computeLatestChange } from '../utils/indicatorChange';
 import type { HistoryPeriod } from '../utils/indicatorStats';
 import { filterByPeriod, periodOptionsForFrequency } from '../utils/indicatorStats';
 import { IndicatorHistoryChart } from './IndicatorHistoryChart';
+import { IndicatorLatestValue } from './IndicatorLatestValue';
 import { ObservationsTable } from './ObservationsTable';
 import { Skeleton } from './Skeleton';
 
@@ -39,6 +41,12 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
     [observations, period],
   );
 
+  // Calculada sobre o histórico COMPLETO, não sobre chartObservations (que
+  // é só o recorte do período escolhido no gráfico) — é a mesma regra do
+  // card do dashboard: último valor vs. a observação imediatamente
+  // anterior, sempre, independente de qual janela o gráfico está mostrando.
+  const change = observations ? computeLatestChange(observations) : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -72,6 +80,15 @@ export function IndicatorDetailModal({ indicator, onClose }: IndicatorDetailModa
           <p className="border-b border-slate-700 p-5 text-sm text-slate-300">
             {indicator.description}
           </p>
+        )}
+
+        {change && (
+          <div className="border-b border-slate-700 p-5">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Valor mais recente
+            </p>
+            <IndicatorLatestValue change={change} />
+          </div>
         )}
 
         <div className="overflow-y-auto p-5">

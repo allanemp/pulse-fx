@@ -3,17 +3,12 @@ import type { KeyboardEvent, MouseEvent } from 'react';
 import { useObservations } from '../hooks/useObservations';
 import { useToggleFavorite } from '../hooks/useToggleFavorite';
 import { computeLatestChange } from '../utils/indicatorChange';
+import { IndicatorLatestValue } from './IndicatorLatestValue';
 import { Skeleton } from './Skeleton';
 
 interface IndicatorCardProps {
   indicator: IndicatorDTO;
   onOpenDetails: (indicator: IndicatorDTO) => void;
-}
-
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'UTC' });
-
-function formatValue(value: number): string {
-  return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /**
@@ -76,31 +71,7 @@ export function IndicatorCard({ indicator, onOpenDetails }: IndicatorCardProps) 
       )}
       {isError && <p className="text-sm text-red-400">Erro ao carregar dados.</p>}
 
-      {change && (
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-2xl font-bold text-slate-50">{formatValue(change.latest.value)}</p>
-            <p className="text-xs text-slate-400">
-              {dateFormatter.format(new Date(change.latest.date))}
-            </p>
-          </div>
-
-          {change.changePercent !== null && (
-            <span
-              className={`rounded-full px-2 py-1 text-xs font-medium ${
-                change.changePercent > 0
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : change.changePercent < 0
-                    ? 'bg-red-500/10 text-red-400'
-                    : 'bg-slate-700 text-slate-300'
-              }`}
-            >
-              {change.changePercent > 0 ? '▲' : change.changePercent < 0 ? '▼' : '—'}{' '}
-              {formatValue(Math.abs(change.changePercent))}%
-            </span>
-          )}
-        </div>
-      )}
+      {change && <IndicatorLatestValue change={change} />}
     </div>
   );
 }

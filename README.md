@@ -392,6 +392,58 @@ guarde o segredo do lado do servidor — fora do escopo atual.
 mesmo valor — no Docker Compose, ambos vêm da única variável `API_TOKEN` do
 `.env` da raiz. Gere um valor novo por ambiente com `openssl rand -hex 32`.
 
+## Variáveis de ambiente
+
+Qual arquivo usar depende de como você roda o projeto (ver "Como rodar"
+abaixo) — Docker Compose lê só o `.env` da raiz; rodando `api`/`web` direto
+na máquina, cada um lê o seu próprio `.env`. Todos têm um `.env.example`
+correspondente (`cp .env.example .env`).
+
+### Raiz (`.env`) — usado pelo `docker-compose.yml`
+
+| Variável                | Obrigatória | Default (exemplo)      | Descrição                                                          |
+| ------------------------ | :---------: | ----------------------- | -------------------------------------------------------------------- |
+| `POSTGRES_USER`          | não         | `pulsefx`               | Usuário do Postgres (dev)                                          |
+| `POSTGRES_PASSWORD`      | não         | `pulsefx`                | Senha do Postgres (dev)                                            |
+| `POSTGRES_DB`             | não         | `pulsefx`                | Nome do banco                                                       |
+| `POSTGRES_PORT`           | não         | `5432`                   | Porta exposta no host                                               |
+| `REDIS_PORT`              | não         | `6379`                   | Porta exposta no host                                               |
+| `REDIS_COMMANDER_PORT`    | não         | `8081`                   | UI opcional do Redis (`docker compose up -d redis-commander`)      |
+| `API_PORT`                | não         | `3333`                   | Porta exposta no host                                               |
+| `CORS_ORIGIN`             | não         | `http://localhost:5173`  | Único domínio autorizado a chamar a API do navegador               |
+| `API_TOKEN`               | **sim**     | —                        | Segredo compartilhado api/web — `openssl rand -hex 32`. Sem default de propósito (ver Segurança) |
+| `FRED_API_KEY`            | não\*       | —                        | \*Só necessária se algum indicador usar `source: "fred"` — grátis em [fredaccount.stlouisfed.org](https://fredaccount.stlouisfed.org/apikeys) |
+| `WEB_PORT`                | não         | `5173`                   | Porta exposta no host                                               |
+| `VITE_API_URL`            | não         | `http://localhost:3333`  | URL da API que o frontend chama — embutida no bundle em build time |
+
+### `apps/api/.env` — rodando a API fora do Docker (`npm run dev:api`)
+
+Além de `CORS_ORIGIN`, `API_TOKEN` e `FRED_API_KEY` (mesmo significado
+acima):
+
+| Variável                 | Obrigatória | Default                                                              | Descrição                                                |
+| -------------------------- | :---------: | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `NODE_ENV`                 | não         | `development`                                                           | `development` \| `test` \| `production`                   |
+| `PORT`                     | não         | `3333`                                                                   | Porta HTTP da API                                          |
+| `DATABASE_URL`             | **sim**     | —                                                                        | String de conexão do Postgres                              |
+| `LOG_LEVEL`                | não         | `info`                                                                   | Nível do logger (pino)                                     |
+| `REDIS_URL`                | não         | `redis://localhost:6379`                                                | Fila BullMQ + cache de leitura                              |
+| `CACHE_TTL_SECONDS`        | não         | `300`                                                                    | TTL do cache de `GET /api/indicators`/`/observations`      |
+| `BCB_API_BASE_URL`         | não         | `https://api.bcb.gov.br`                                                | Domínio do SGS (Selic, IPCA)                                |
+| `BCB_PTAX_API_BASE_URL`    | não         | `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata`         | Domínio do PTAX (câmbio) — API diferente do SGS             |
+| `FRED_API_BASE_URL`        | não         | `https://api.stlouisfed.org/fred`                                       | Domínio da API do FRED                                      |
+
+### `apps/web/.env` — rodando o frontend fora do Docker (`npm run dev:web`)
+
+| Variável          | Obrigatória | Default                   | Descrição                                                                 |
+| ------------------- | :---------: | --------------------------- | ---------------------------------------------------------------------------- |
+| `VITE_API_URL`      | não         | `http://localhost:3333`     | URL da API                                                                   |
+| `VITE_API_TOKEN`    | **sim**     | —                            | Mesmo valor de `API_TOKEN` da API — embutido no bundle, **não é segredo real** (ver Segurança) |
+
+Variáveis de produção (`.env.production`, usado pelo
+`docker-compose.prod.yml`, incluindo `CLOUDFLARE_TUNNEL_TOKEN`) estão
+documentadas na seção "Deploy em produção" mais abaixo, não repetidas aqui.
+
 ## Como rodar
 
 ### Opção 1 — Docker Compose (recomendado)
